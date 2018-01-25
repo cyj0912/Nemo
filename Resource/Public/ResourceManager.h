@@ -16,11 +16,15 @@ class RESOURCE_API FResourceManager
     static const char PathDelimChar = '/';
 #endif
     string PathDelimiter;
+    char DataDirAbsolutePath[256];
     set<string> SearchPaths;
     unordered_map<string, TRefPtr<RResource>> ResourceMap;
 public:
     void Init();
     void Shutdown();
+
+    //Not sure if I want to delete this function
+    //const char* GetDataDirAbsolutePath();
 
     string ProcessPath(const string& path);
     string FindFile(const string& name);

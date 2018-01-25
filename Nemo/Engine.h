@@ -7,4 +7,7 @@ extern class FHighResolutionClock GSystemClock;
 extern class FHighResolutionClock GMainClock;
 extern class FEntityManager GEntityManager;
 
+void FireMainLoop();
+void StopMainLoop();
+
 }

@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.1)
 
 project(Nemo LANGUAGES CXX)
 
-file(GLOB MAIN_SOURCES *.cpp *.ui ECS/*.cpp Physics/*.cpp)
-file(GLOB MAIN_HEADERS *.h ECS/*.h Physics/*.h)
+file(GLOB MAIN_SOURCES *.cpp *.ui ECS/*.cpp Physics/*.cpp Render/*.cpp)
+file(GLOB MAIN_HEADERS *.h ECS/*.h Physics/*.h Render/*.h)
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
@@ -13,6 +13,7 @@ add_executable(${PROJECT_NAME} ${MAIN_SOURCES} ${MAIN_HEADERS})
 target_include_directories(${PROJECT_NAME} PRIVATE .)
 target_include_directories(${PROJECT_NAME} PRIVATE ./ECS)
 target_include_directories(${PROJECT_NAME} PRIVATE ./Physics)
+target_include_directories(${PROJECT_NAME} PRIVATE ./Render)
 target_compile_options(${PROJECT_NAME} ${DEFAULT_COMPILE_OPTIONS})
 target_link_libraries(${PROJECT_NAME} PRIVATE Foundation)
 target_link_libraries(${PROJECT_NAME} PRIVATE Math)

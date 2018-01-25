@@ -4,6 +4,9 @@ namespace tc
 {
 
 class FGLSLProgram;
+class FDumbRendererPrivData;
+class FRenderTarget;
+class FRenderHelper;
 
 struct FRenderViewInfo
 {
@@ -19,7 +22,11 @@ struct FRenderViewInfo
 
 class FDumbRenderer
 {
+    bool bHasRenderViewInfo;
     FRenderViewInfo RenderViewInfo;
+    FDumbRendererPrivData* Pd;
+    FRenderTarget* InitRenderTarget;
+    FRenderHelper* RenderHelper;
 
 public:
     FDumbRenderer();
@@ -35,6 +42,8 @@ public:
     }
 
     void SetRenderViewInfo(const FRenderViewInfo &value);
+
+    void SetInitialRenderTarget(FRenderTarget* target);
 };
 
 }

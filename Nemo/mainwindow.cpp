@@ -6,6 +6,7 @@
 #include "NodeFactory.h"
 #include "NemoSceneNode.h"
 #include "Serialization.h"
+#include "hlslhacking.h"
 #include <ResourceManager.h>
 #include <Scene.h>
 #include <QPushButton>
@@ -22,6 +23,9 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    hlslHackingWindow = new HlslHacking();
+    hlslHackingWindow->show();
+
     connect(ui->actionAbout_Qt, &QAction::triggered, qApp, &QApplication::aboutQt);
 
     if (!GNemoRoot.Init())
@@ -32,9 +36,7 @@ MainWindow::MainWindow(QWidget *parent) :
     auto* model = new FSceneModel(this, GNemoRoot.GetMainScene()->GetRootNode());
     ui->sceneTree->setModel(model);
 
-    ui->fpsLabel->setText("Nano");
-
-    connect(ui->openGLWidget, CentralGLWidget::frameCountChanged, this, MainWindow::updateFpsLabel);
+    connect(ui->openGLWidget, &CentralGLWidget::frameCountChanged, this, &MainWindow::updateFpsLabel);
 }
 
 MainWindow::~MainWindow()
@@ -97,6 +99,13 @@ void MainWindow::on_actionFPSControl_toggled(bool isChecked)
 
 void MainWindow::updateFpsLabel()
 {
+    auto totalTime = GNemoRoot.GetRootTimer()->GetTotalTime();
+    auto timeStr = QString::number(totalTime);
     auto fcount = ui->openGLWidget->GetFrameCount();
-    ui->fpsLabel->setText(QString::number(fcount));
+    ui->fpsLabel->setText(QString::number(fcount) + " t=" + timeStr);
+}
+
+void MainWindow::on_btnShowHlslHack_clicked()
+{
+    hlslHackingWindow->show();
 }

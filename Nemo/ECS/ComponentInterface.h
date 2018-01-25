@@ -9,6 +9,7 @@ class IComponent
 {
 public:
     virtual ~IComponent() {}
+    virtual int GetId() const = 0;
     virtual void AddEntityGeneric(FEntityRef& entity) = 0;
     virtual void RemoveEntity(FEntityRef& entity) = 0;
     virtual bool HasDataForEntity(const FEntityRef& entity) const = 0;

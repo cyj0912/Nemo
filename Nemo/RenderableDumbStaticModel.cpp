@@ -73,8 +73,6 @@ void FRenderableDumbStaticModel::InitializeIfNot()
 void FRenderableDumbStaticModel::Draw(FSceneNode* sceneNode)
 {
     InitializeIfNot();
-    LOGDEBUG("FRenderableDumbStaticModel::Draw: %s\n", sceneNode->GetName().c_str());
-    LOGINFO("OpenGL %d.%d\n", GLVersion.major, GLVersion.minor);
     auto camNode = GNemoRoot.GetMainScene()->GetActiveCameraNode();
     FCamera* camera = nullptr;
     if (camNode)

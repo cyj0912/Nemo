@@ -1,27 +1,32 @@
 #pragma once
 #include "ComponentInterface.h"
+#include "EntityManager.h"
 #include <VectorPool.h>
 #include <Foundation.h>
 
 namespace tc
 {
 
-template <typename TD>
+template <typename TD, typename Child = int>
 class TComponent : public IComponent
 {
-public:
-    struct FComponentElement
-    {
-        FEntityId EntityId;
-        TD Data;
-    };
+    FEntityManager* Manager;
 protected:
-    TVectorPool<FComponentElement> ComponentPool;
-    unordered_map<FEntityId, size_t> LookupFromEntityId;
+    TVectorPool<TD> ComponentPool;
+    mutable unordered_map<FEntityId, size_t> LookupFromEntityId;
 public:
     //Not use(ed/ful) yet
     //typedef typename TVectorPool<FComponentElement>::Iterator iterator;
     //typedef TD value_type;
+
+    TComponent(FEntityManager* mgr) : Manager(mgr)
+    {
+    }
+
+    int GetId() const override
+    {
+        return Child::Id;
+    }
 
     TD* AddEntity(FEntityRef& entity)
     {
@@ -30,13 +35,22 @@ public:
             return GetComponentData(entity);
         auto compRef = ComponentPool.GetNewElement(kAddToBack);
         LookupFromEntityId[entity.GetId()] = compRef.index();
-        compRef->EntityId = entity.GetId();
-        return &compRef->Data;
+        TD* dataPtr = &*compRef;
+        static_cast<Child*>(this)->OnEntityAdded(entity, dataPtr);
+        Manager->NotifyEntityAddedToComponent(entity, this);
+        return dataPtr;
     }
 
     TD* GetComponentData(const FEntityRef& entity)
     {
-        return GetComponentDataAsVoid(entity);
+        assert(entity.IsValid());
+        auto compIndex = LookupFromEntityId[entity.GetId()];
+        return ComponentPool.GetElementData(compIndex);
+    }
+
+    const TD* GetComponentData(const FEntityRef& entity) const
+    {
+        return const_cast<TComponent*>(this)->GetComponentData(entity);
     }
 
     void AddEntityGeneric(FEntityRef& entity) override
@@ -46,9 +60,11 @@ public:
 
     void RemoveEntity(FEntityRef& entity) override
     {
+        Manager->NotifyEntityRemovedFromComponent(entity, this);
         if (!HasDataForEntity(entity))
             return;
         auto compIndex = LookupFromEntityId[entity.GetId()];
+        static_cast<Child*>(this)->OnEntityToBeRemoved(entity, GetComponentData(entity));
         ComponentPool.FreeElement(compIndex);
         LookupFromEntityId.erase(entity.GetId());
     }
@@ -67,12 +83,13 @@ public:
 
     void* GetComponentDataAsVoid(const FEntityRef& entity) override
     {
-        assert(entity.IsValid());
-        auto compIndex = LookupFromEntityId[entity.GetId()];
-        return &ComponentPool.GetElementData(compIndex)->Data;
+        return GetComponentData(entity);
     }
 
-    const void* GetComponentDataAsVoid(const FEntityRef& entity) const override;
+    const void* GetComponentDataAsVoid(const FEntityRef& entity) const override
+    {
+        return GetComponentData(entity);
+    }
 };
 
 } /* namespace tc */

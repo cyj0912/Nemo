@@ -32,6 +32,7 @@ THE SOFTWARE.
 
 namespace tc
 {
+
 template <typename T>
 class FUniquePtr : public std::unique_ptr<T>
 {

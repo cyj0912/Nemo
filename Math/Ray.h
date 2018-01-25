@@ -50,37 +50,37 @@ public:
 
     /// Copy-construct from another ray.
     Ray(const Ray& ray) :
-        origin_(ray.origin_),
-        direction_(ray.direction_)
+        Origin(ray.Origin),
+        Direction(ray.Direction)
     {
     }
 
     /// Assign from another ray.
     Ray& operator =(const Ray& rhs)
     {
-        origin_ = rhs.origin_;
-        direction_ = rhs.direction_;
+        Origin = rhs.Origin;
+        Direction = rhs.Direction;
         return *this;
     }
 
     /// Check for equality with another ray.
-    bool operator ==(const Ray& rhs) const { return origin_ == rhs.origin_ && direction_ == rhs.direction_; }
+    bool operator ==(const Ray& rhs) const { return Origin == rhs.Origin && Direction == rhs.Direction; }
 
     /// Check for inequality with another ray.
-    bool operator !=(const Ray& rhs) const { return origin_ != rhs.origin_ || direction_ != rhs.direction_; }
+    bool operator !=(const Ray& rhs) const { return Origin != rhs.Origin || Direction != rhs.Direction; }
 
     /// Define from origin and direction. The direction will be normalized.
     void Define(const Vector3& origin, const Vector3& direction)
     {
-        origin_ = origin;
-        direction_ = direction.Normalized();
+        Origin = origin;
+        Direction = direction.Normalized();
     }
 
     /// Project a point on the ray.
     Vector3 Project(const Vector3& point) const
     {
-        Vector3 offset = point - origin_;
-        return origin_ + offset.DotProduct(direction_) * direction_;
+        Vector3 offset = point - Origin;
+        return Origin + offset.DotProduct(Direction) * Direction;
     }
 
     /// Return distance of a point from the ray.
@@ -118,9 +118,9 @@ public:
     Ray Transformed(const Matrix3x4& transform) const;
 
     /// Ray origin.
-    Vector3 origin_;
+    Vector3 Origin;
     /// Ray direction.
-    Vector3 direction_;
+    Vector3 Direction;
 };
 
 }

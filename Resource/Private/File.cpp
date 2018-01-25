@@ -16,7 +16,7 @@ TRefPtr<RDiskFile> RDiskFile::NewFromPath(const string &path, RFile::OpenMode mo
     case OpenMode::Write:
         fopen_s(&fp, path.c_str(), "wb");
         break;
-    case OpenMode ::Append:
+    case OpenMode::Append:
         fopen_s(&fp, path.c_str(), "ab");
         break;
     }

@@ -26,7 +26,10 @@ void FResourceManager::Init()
         SearchPaths.insert(wd);
         auto dataDir = FPathTools::Join(wd, "Data");
         if (FPathTools::Exists(dataDir))
+        {
+            strcpy(DataDirAbsolutePath, dataDir.c_str());
             SearchPaths.insert(dataDir);
+        }
         wd = FPathTools::StripFilename(wd);
         wd = FPathTools::RemoveTrailingSlash(wd);
     }
@@ -38,6 +41,13 @@ void FResourceManager::Shutdown()
 {
     SearchPaths.clear();
 }
+
+/*
+const char* FResourceManager::GetDataDirAbsolutePath()
+{
+    return DataDirAbsolutePath;
+}
+*/
 
 string FResourceManager::ProcessPath(const string &path)
 {

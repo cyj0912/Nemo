@@ -16,73 +16,91 @@ namespace tc
 {
 
 class FScene;
-class SCENEMGR_API FSceneNode: public FRefCount
+
+enum ETransformSpace
 {
-    friend class FScene;
+    TS_LOCAL = 0,
+    TS_PARENT,
+    TS_WORLD
+};
+
+class SCENEMGR_API FNode : public FRefCount
+{
     string Name;
-    FScene* Scene;
+
+    FNode *Parent, *RootNode;
+    vector<TRefPtr<FNode>> Children;
 
     Vector3 Translation, Scale;
     Quaternion Rotation;
     mutable Matrix3x4 TransformToParent, TransformFromParent, WorldTransform, InverseWorldTransform;
     mutable bool TransformToParentDirty, TransformFromParentDirty, WorldTransformDirty, InverseWorldTransformDirty;
 
-    FSceneNode *Parent, *RootNode;
-    vector<TRefPtr<FSceneNode>> Children;
-    set<TRefPtr<FSceneAttachment>> Attachments;
+    void SetRootNodeRecurse(FNode* rootNode)
+    {
+        RootNode = rootNode;
+        for (auto& child : Children)
+            child->SetRootNodeRecurse(rootNode);
+    }
 
-    TRefPtr<FCamera> AttachedCamera;
-
-    void SetParent(FSceneNode *value)
+    void SetParent(FNode *value)
     {
         Parent = value;
         if (Parent)
-            SetRootNodeAndSceneRecurse(Parent->GetRootNode(), Parent->GetScene());
+            SetRootNodeRecurse(Parent->GetRootNode());
         else
-            SetRootNodeAndSceneRecurse(this, nullptr);
-    }
-
-    void SetRootNodeAndSceneRecurse(FSceneNode* rootNode, FScene* scene)
-    {
-        RootNode = rootNode;
-        Scene = scene;
-        for (auto& child : Children)
-            child->SetRootNodeAndSceneRecurse(rootNode, scene);
+            SetRootNodeRecurse(this);
     }
 
 public:
-    FSceneNode();
-    FSceneNode(const FSceneNode &) = delete;
-    FSceneNode(FSceneNode &&) = delete;
-    FSceneNode &operator=(const FSceneNode &) = delete;
-    FSceneNode &operator=(FSceneNode &&) = delete;
+    FNode();
+    FNode(const FNode &) = delete;
+    FNode(FNode &&) = delete;
+    FNode &operator=(const FNode &) = delete;
+    FNode &operator=(FNode &&) = delete;
 
-    string GetName() const
+    string GetName() const { return Name; }
+    void SetName(const string &value) { Name = value; }
+
+    FNode* GetParent() const { return Parent; }
+    FNode* GetRootNode() const { return RootNode; }
+
+    void AddChild(FNode *child);
+
+    FNode* FindNodeByName(const string& name);
+
+    size_t CountChildren() { return Children.size(); }
+
+    FNode* ChildAt(size_t index)
     {
-        return Name;
+        return Children[index];
     }
 
-    void SetName(const string &value)
+    ptrdiff_t ChildToIndex(FNode* child)
     {
-        Name = value;
+        for (size_t i = 0; i < Children.size(); ++i)
+        {
+            if (Children[i] == child)
+                return i;
+        }
+        return -1;
     }
 
-    FScene *GetScene() const
-    {
-        return Scene;
-    }
-
-    Matrix3x4 GetTransformToParent() const;
-    Matrix3x4 GetTransformFromParent() const;
-    Matrix3x4 GetTransformToWorld() const;
-    Matrix3x4 GetTransformFromWorld() const;
+    const Matrix3x4& GetTransformToParent() const;
+    const Matrix3x4& GetTransformFromParent() const;
+    const Matrix3x4& GetTransformToWorld() const;
+    const Matrix3x4& GetTransformFromWorld() const;
 
     Vector3 GetWorldTranslation() const;
+    Quaternion GetWorldRotation() const;
+
+    Vector3 ConvertVectorFrom(const Vector3 &v, FNode *target) const;
+    Vector3 ConvertVectorTo(const Vector3 &v, FNode *target) const;
 
     void MarkWorldTransformDirtyRecursively();
 
-    Vector3 GetTranslation() const
-    { return Translation; }
+    Vector3 GetTranslation() const { return Translation; }
+
     void SetTranslation(const Vector3 &value)
     {
         Translation = value;
@@ -108,8 +126,8 @@ public:
         MarkWorldTransformDirtyRecursively();
     }
 
-    Quaternion GetRotation() const
-    { return Rotation; }
+    Quaternion GetRotation() const { return Rotation; }
+
     void SetRotation(const Quaternion &value)
     {
         Rotation = value;
@@ -117,14 +135,14 @@ public:
         MarkWorldTransformDirtyRecursively();
     }
 
-    void Rotate(const Quaternion& q);
-    void Rotate(const Vector3& axis, float angle);
-    void Yaw(float angle);
-    void Pitch(float angle);
-    void Roll(float angle);
+    void Rotate(const Quaternion& q, ETransformSpace space = TS_LOCAL);
+    void Rotate(const Vector3& axis, float angle, ETransformSpace space = TS_LOCAL);
+    void Yaw(float angle, ETransformSpace space = TS_LOCAL);
+    void Pitch(float angle, ETransformSpace space = TS_LOCAL);
+    void Roll(float angle, ETransformSpace space = TS_LOCAL);
 
-    Vector3 GetScale() const
-    { return Scale; }
+    Vector3 GetScale() const { return Scale; }
+
     void SetScale(const Vector3 &value)
     {
         Scale = value;
@@ -142,20 +160,19 @@ public:
     }
 
     void LookAt(const Vector3 &at);
+};
 
-    Vector3 ConvertVectorFrom(const Vector3 &v, FSceneNode *target) const;
-    Vector3 ConvertVectorTo(const Vector3 &v, FSceneNode *target) const;
+class SCENEMGR_API FSceneNode: public FNode
+{
+    set<TRefPtr<FSceneAttachment>> Attachments;
 
-    FSceneNode *GetRootNode() const
-    { return RootNode; }
-    FSceneNode *GetParent() const
-    { return Parent; }
+    TRefPtr<FCamera> AttachedCamera;
 
-    void AddChild(FSceneNode *child);
+public:
+    FSceneNode();
+
     FSceneNode* CreateChild();
     FSceneNode* CreateChild(const string& name);
-
-    FSceneNode* FindNodeByName(const string& name);
 
     void Attach(FSceneAttachment *attachment);
     void Detach(FSceneAttachment *attachment);
@@ -170,9 +187,12 @@ public:
     template<typename Func> void ForEachNodeDeep(Func fn)
     {
         fn(this);
-        for (TRefPtr<FSceneNode> &child : Children)
+        int limit = CountChildren();
+        for (int i = 0; i < limit; i++)
         {
-            child->ForEachNodeDeep(fn);
+            FNode* child = ChildAt(i);
+            auto* scnNodeChild = static_cast<FSceneNode*>(child);
+            scnNodeChild->ForEachNodeDeep(fn);
         }
     }
 
@@ -201,27 +221,13 @@ public:
         {
             fn(this, attachment);
         }
-        for (auto& child : Children)
+        int limit = CountChildren();
+        for (int i = 0; i < limit; i++)
         {
-            child->ForEachAttachmentDeep(fn);
+            FNode* child = ChildAt(i);
+            auto* scnNodeChild = static_cast<FSceneNode*>(child);
+            scnNodeChild->ForEachAttachmentDeep(fn);
         }
-    }
-
-    size_t CountChildren() { return Children.size(); }
-
-    FSceneNode* ChildAt(size_t index)
-    {
-        return Children[index];
-    }
-
-    ptrdiff_t ChildToIndex(FSceneNode* child)
-    {
-        for (size_t i = 0; i < Children.size(); ++i)
-        {
-            if (Children[i] == child)
-                return i;
-        }
-        return -1;
     }
 };
 

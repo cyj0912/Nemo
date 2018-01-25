@@ -77,17 +77,17 @@ enum class EScanCode
     _9 = 38,
     _0 = 39,
 
-    RETURN = 40,
-    ESCAPE = 41,
-    BACKSPACE = 42,
-    TAB = 43,
-    SPACE = 44,
+    Return = 40,
+    Escape = 41,
+    Backspace = 42,
+    Tab = 43,
+    Space = 44,
 
-    MINUS = 45,
-    EQUALS = 46,
-    LEFTBRACKET = 47,
-    RIGHTBRACKET = 48,
-    BACKSLASH = 49, /**< Located at the lower left of the return
+    Minus = 45,
+    Equals = 46,
+    LeftBracket = 47,
+    RightBracket = 48,
+    Backslash = 49, /**< Located at the lower left of the return
                                   *   key on ISO keyboards and at the right end
                                   *   of the QWERTY row on ANSI keyboards.
                                   *   Produces REVERSE SOLIDUS (backslash) and
@@ -101,7 +101,7 @@ enum class EScanCode
                                   *   layout, and ASTERISK and MICRO SIGN in a
                                   *   French Windows layout.
                                   */
-    NONUSHASH = 50, /**< ISO USB keyboards actually use this code
+    NonUSHaSh = 50, /**< ISO USB keyboards actually use this code
                                   *   instead of 49 for the same key, but all
                                   *   OSes I've seen treat the two codes
                                   *   identically. So, as an implementor, unless
@@ -113,9 +113,9 @@ enum class EScanCode
                                   *   will never generate it with most (all?)
                                   *   keyboards.
                                   */
-    SEMICOLON = 51,
-    APOSTROPHE = 52,
-    GRAVE = 53, /**< Located in the top left corner (on both ANSI
+    Semicolon = 51,
+    Apostrophe = 52,
+    Grave = 53, /**< Located in the top left corner (on both ANSI
                               *   and ISO keyboards). Produces GRAVE ACCENT and
                               *   TILDE in a US Windows layout and in US and UK
                               *   Mac layouts on ANSI keyboards, GRAVE ACCENT
@@ -759,7 +759,11 @@ struct FKeyboardInputEvent
 
 typedef union FInputEvent
 {
-    EInputEventType Type;
+    struct
+    {
+        EInputEventType Type;
+        uint32_t TimeStamp;
+    };
     FMouseMotionEvent MouseMotion;
     FMouseButtonEvent MouseButton;
     FMouseWheelEvent MouseWheel;

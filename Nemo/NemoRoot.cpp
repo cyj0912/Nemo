@@ -1,6 +1,7 @@
 #include "NemoRoot.h"
 #include "RenderableDumbStaticModel.h"
 #include "DumbRenderer.h"
+#include "Engine.h"
 #include <Scene.h>
 #include <Camera.h>
 #include <Mesh.h>
@@ -26,6 +27,8 @@ bool FNemoRoot::InitGL(void *(*glLoader)(const char *))
     LOGINFO("Glad loaded successfully\n");
     LOGINFO("OpenGL %d.%d\n", GLVersion.major, GLVersion.minor);
 
+    LOGINFO("GLAD_GL_ARB_bindless_texture %d\n", GLAD_GL_ARB_bindless_texture);
+
     auto* mainCam = new FCamera();
     auto* camPivot = GetMainScene()->GetRootNode()->CreateChild("cameraPivotNode");
     auto* camNode = camPivot->CreateChild("cameraNode");
@@ -36,12 +39,15 @@ bool FNemoRoot::InitGL(void *(*glLoader)(const char *))
 
     RootTimer.Tick();
 
+    FireMainLoop();
+
     MainRenderer = new FDumbRenderer();
-    return MainRenderer->Init();
+    return true;
 }
 
 bool FNemoRoot::Shutdown()
 {
+    StopMainLoop();
     MainRenderer->Shutdown();
     delete MainRenderer;
     delete MainScene;

@@ -7,6 +7,8 @@ namespace Ui {
 class MainWindow;
 }
 
+class HlslHacking;
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -25,8 +27,11 @@ private slots:
 
     void updateFpsLabel();
 
+    void on_btnShowHlslHack_clicked();
+
 private:
     Ui::MainWindow *ui;
+    HlslHacking* hlslHackingWindow;
 };
 
 #endif // MAINWINDOW_H

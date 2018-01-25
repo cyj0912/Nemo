@@ -1,8 +1,11 @@
 #include <Log.h>
 #include <Platform.h>
 #include <iostream>
+#include <mutex>
+
 namespace tc
 {
+
 std::vector<ILogListener*> FLog::Listeners;
 
 void FLog::AddListener(ILogListener* l)
@@ -23,9 +26,13 @@ bool FLog::RemoveListener(ILogListener* l)
 	return false;
 }
 
-static char DispatchLogBuffer[1048576];
+static std::mutex DispatchLogMutex;
+static char DispatchLogBuffer[4096];
+
 void FLog::DispatchLog(LogLevels level, const char* fmt, ...)
 {
+    std::lock_guard<std::mutex> guard(DispatchLogMutex);
+
 	va_list ap;
 	va_start(ap, fmt);
 #if TC_OS == TC_OS_WINDOWS_NT

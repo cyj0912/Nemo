@@ -8,7 +8,8 @@ class CentralGLWidget : public QOpenGLWidget
     Q_OBJECT
 
     int LastMouseX, LastMouseY;
-    bool bMouseInWindow, bIsFpsControl;
+    int PinnedX, PinnedY;
+    bool bMouseInWindow, bIsFpsControl, bHideAndPinCursor;
 
     tc::FFirstPersonCameraController CameraController;
 
@@ -28,16 +29,17 @@ protected:
     void enterEvent(QEvent *event) override;
     void leaveEvent(QEvent *event) override;
 
+    void keyPressEvent(QKeyEvent* event) override;
+    void keyReleaseEvent(QKeyEvent* event) override;
+
 public:
     explicit CentralGLWidget(QWidget *parent = nullptr);
 
     bool IsFpsControl() const;
-    void SetFpsControl(bool value);
+    void SetFpsControl(bool value, bool pinCursor = false);
 
     int GetFrameCount() const;
 
 signals:
     void frameCountChanged();
-
-public slots:
 };

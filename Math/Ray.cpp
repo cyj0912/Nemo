@@ -34,9 +34,9 @@ namespace tc
 Vector3 Ray::ClosestPoint(const Ray& ray) const
 {
     // Algorithm based on http://paulbourke.net/geometry/lineline3d/
-    Vector3 p13 = origin_ - ray.origin_;
-    Vector3 p43 = ray.direction_;
-    Vector3 p21 = direction_;
+    Vector3 p13 = Origin - ray.Origin;
+    Vector3 p43 = ray.Direction;
+    Vector3 p21 = Direction;
 
     float d1343 = p13.DotProduct(p43);
     float d4321 = p43.DotProduct(p21);
@@ -46,19 +46,19 @@ Vector3 Ray::ClosestPoint(const Ray& ray) const
 
     float d = d2121 * d4343 - d4321 * d4321;
     if (Abs(d) < M_EPSILON)
-        return origin_;
+        return Origin;
     float n = d1343 * d4321 - d1321 * d4343;
     float a = n / d;
 
-    return origin_ + a * direction_;
+    return Origin + a * Direction;
 }
 
 float Ray::HitDistance(const Plane& plane) const
 {
-    float d = plane.normal_.DotProduct(direction_);
+    float d = plane.normal_.DotProduct(Direction);
     if (Abs(d) >= M_EPSILON)
     {
-        float t = -(plane.normal_.DotProduct(origin_) + plane.d_) / d;
+        float t = -(plane.normal_.DotProduct(Origin) + plane.d_) / d;
         if (t >= 0.0f)
             return t;
         else
@@ -75,70 +75,70 @@ float Ray::HitDistance(const BoundingBox& box) const
         return M_INFINITY;
 
     // Check for ray origin being inside the box
-    if (box.IsInside(origin_))
+    if (box.IsInside(Origin))
         return 0.0f;
 
     float dist = M_INFINITY;
 
     // Check for intersecting in the X-direction
-    if (origin_.x_ < box.min_.x_ && direction_.x_ > 0.0f)
+    if (Origin.x_ < box.min_.x_ && Direction.x_ > 0.0f)
     {
-        float x = (box.min_.x_ - origin_.x_) / direction_.x_;
+        float x = (box.min_.x_ - Origin.x_) / Direction.x_;
         if (x < dist)
         {
-            Vector3 point = origin_ + x * direction_;
+            Vector3 point = Origin + x * Direction;
             if (point.y_ >= box.min_.y_ && point.y_ <= box.max_.y_ && point.z_ >= box.min_.z_ && point.z_ <= box.max_.z_)
                 dist = x;
         }
     }
-    if (origin_.x_ > box.max_.x_ && direction_.x_ < 0.0f)
+    if (Origin.x_ > box.max_.x_ && Direction.x_ < 0.0f)
     {
-        float x = (box.max_.x_ - origin_.x_) / direction_.x_;
+        float x = (box.max_.x_ - Origin.x_) / Direction.x_;
         if (x < dist)
         {
-            Vector3 point = origin_ + x * direction_;
+            Vector3 point = Origin + x * Direction;
             if (point.y_ >= box.min_.y_ && point.y_ <= box.max_.y_ && point.z_ >= box.min_.z_ && point.z_ <= box.max_.z_)
                 dist = x;
         }
     }
     // Check for intersecting in the Y-direction
-    if (origin_.y_ < box.min_.y_ && direction_.y_ > 0.0f)
+    if (Origin.y_ < box.min_.y_ && Direction.y_ > 0.0f)
     {
-        float x = (box.min_.y_ - origin_.y_) / direction_.y_;
+        float x = (box.min_.y_ - Origin.y_) / Direction.y_;
         if (x < dist)
         {
-            Vector3 point = origin_ + x * direction_;
+            Vector3 point = Origin + x * Direction;
             if (point.x_ >= box.min_.x_ && point.x_ <= box.max_.x_ && point.z_ >= box.min_.z_ && point.z_ <= box.max_.z_)
                 dist = x;
         }
     }
-    if (origin_.y_ > box.max_.y_ && direction_.y_ < 0.0f)
+    if (Origin.y_ > box.max_.y_ && Direction.y_ < 0.0f)
     {
-        float x = (box.max_.y_ - origin_.y_) / direction_.y_;
+        float x = (box.max_.y_ - Origin.y_) / Direction.y_;
         if (x < dist)
         {
-            Vector3 point = origin_ + x * direction_;
+            Vector3 point = Origin + x * Direction;
             if (point.x_ >= box.min_.x_ && point.x_ <= box.max_.x_ && point.z_ >= box.min_.z_ && point.z_ <= box.max_.z_)
                 dist = x;
         }
     }
     // Check for intersecting in the Z-direction
-    if (origin_.z_ < box.min_.z_ && direction_.z_ > 0.0f)
+    if (Origin.z_ < box.min_.z_ && Direction.z_ > 0.0f)
     {
-        float x = (box.min_.z_ - origin_.z_) / direction_.z_;
+        float x = (box.min_.z_ - Origin.z_) / Direction.z_;
         if (x < dist)
         {
-            Vector3 point = origin_ + x * direction_;
+            Vector3 point = Origin + x * Direction;
             if (point.x_ >= box.min_.x_ && point.x_ <= box.max_.x_ && point.y_ >= box.min_.y_ && point.y_ <= box.max_.y_)
                 dist = x;
         }
     }
-    if (origin_.z_ > box.max_.z_ && direction_.z_ < 0.0f)
+    if (Origin.z_ > box.max_.z_ && Direction.z_ < 0.0f)
     {
-        float x = (box.max_.z_ - origin_.z_) / direction_.z_;
+        float x = (box.max_.z_ - Origin.z_) / Direction.z_;
         if (x < dist)
         {
-            Vector3 point = origin_ + x * direction_;
+            Vector3 point = Origin + x * Direction;
             if (point.x_ >= box.min_.x_ && point.x_ <= box.max_.x_ && point.y_ >= box.min_.y_ && point.y_ <= box.max_.y_)
                 dist = x;
         }
@@ -158,7 +158,7 @@ float Ray::HitDistance(const Frustum& frustum, bool solidInside) const
         const Plane& plane = frustum.planes_[i];
         float distance = HitDistance(frustum.planes_[i]);
 
-        if (plane.Distance(origin_) < 0.0f)
+        if (plane.Distance(Origin) < 0.0f)
         {
             maxOutside = Max(maxOutside, distance);
             allInside = false;
@@ -177,7 +177,7 @@ float Ray::HitDistance(const Frustum& frustum, bool solidInside) const
 
 float Ray::HitDistance(const Sphere& sphere) const
 {
-    Vector3 centeredOrigin = origin_ - sphere.center_;
+    Vector3 centeredOrigin = Origin - sphere.center_;
     float squaredRadius = sphere.radius_ * sphere.radius_;
 
     // Check if ray originates inside the sphere
@@ -185,8 +185,8 @@ float Ray::HitDistance(const Sphere& sphere) const
         return 0.0f;
 
     // Calculate intersection by quadratic equation
-    float a = direction_.DotProduct(direction_);
-    float b = 2.0f * centeredOrigin.DotProduct(direction_);
+    float a = Direction.DotProduct(Direction);
+    float b = 2.0f * centeredOrigin.DotProduct(Direction);
     float c = centeredOrigin.DotProduct(centeredOrigin) - squaredRadius;
     float d = b * b - 4.0f * a * c;
 
@@ -212,17 +212,17 @@ float Ray::HitDistance(const Vector3& v0, const Vector3& v1, const Vector3& v2, 
     Vector3 edge2(v2 - v0);
 
     // Calculate determinant & check backfacing
-    Vector3 p(direction_.CrossProduct(edge2));
+    Vector3 p(Direction.CrossProduct(edge2));
     float det = edge1.DotProduct(p);
     if (det >= M_EPSILON)
     {
         // Calculate u & v parameters and test
-        Vector3 t(origin_ - v0);
+        Vector3 t(Origin - v0);
         float u = t.DotProduct(p);
         if (u >= 0.0f && u <= det)
         {
             Vector3 q(t.CrossProduct(edge1));
-            float v = direction_.DotProduct(q);
+            float v = Direction.DotProduct(q);
             if (v >= 0.0f && u + v <= det)
             {
                 float distance = edge2.DotProduct(q) / det;
@@ -463,8 +463,8 @@ bool Ray::InsideGeometry(const void* vertexData, unsigned vertexSize, const void
 Ray Ray::Transformed(const Matrix3x4& transform) const
 {
     Ray ret;
-    ret.origin_ = transform * origin_;
-    ret.direction_ = transform * Vector4(direction_, 0.0f);
+    ret.Origin = transform * Origin;
+    ret.Direction = transform * Vector4(Direction, 0.0f);
     return ret;
 }
 

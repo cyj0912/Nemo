@@ -3,7 +3,7 @@
 
 using namespace tc;
 
-FSceneModel::FSceneModel(QObject *parent, FSceneNode* rootNode) : QAbstractItemModel(parent), RootNode(rootNode)
+FSceneModel::FSceneModel(QObject *parent, FNode* rootNode) : QAbstractItemModel(parent), RootNode(rootNode)
 {
 }
 
@@ -11,8 +11,8 @@ QModelIndex FSceneModel::index(int row, int column, const QModelIndex &parent) c
 {
     if (parent.isValid())
     {
-        auto* grandParent = static_cast<FSceneNode*>(parent.internalPointer());
-        FSceneNode* parentNode;
+        auto* grandParent = static_cast<FNode*>(parent.internalPointer());
+        FNode* parentNode;
         if (!grandParent)
             parentNode = RootNode;
         else
@@ -24,7 +24,7 @@ QModelIndex FSceneModel::index(int row, int column, const QModelIndex &parent) c
 
 QModelIndex FSceneModel::parent(const QModelIndex &child) const
 {
-    auto* parentNode = static_cast<FSceneNode*>(child.internalPointer());
+    auto* parentNode = static_cast<FNode*>(child.internalPointer());
     if (!parentNode)
         return QModelIndex();
     auto* grandParent = parentNode->GetParent();
@@ -37,7 +37,7 @@ int FSceneModel::rowCount(const QModelIndex &parent) const
 {
     if (!parent.isValid())
         return 1;
-    auto* grandParent = static_cast<FSceneNode*>(parent.internalPointer());
+    auto* grandParent = static_cast<FNode*>(parent.internalPointer());
     if (!grandParent)
         return RootNode->CountChildren();
     auto* parentNode = grandParent->ChildAt(parent.row());
@@ -56,7 +56,7 @@ QVariant FSceneModel::data(const QModelIndex &index, int role) const
 
     if (role == Qt::DisplayRole)
     {
-        auto* parentNode = static_cast<FSceneNode*>(index.internalPointer());
+        auto* parentNode = static_cast<FNode*>(index.internalPointer());
         if (!parentNode)
         {
             return QVariant(RootNode->GetName().c_str());

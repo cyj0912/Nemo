@@ -5,17 +5,17 @@
 
 namespace tc
 {
-class FSceneNode;
+class FNode;
 }
 
 class FSceneModel : public QAbstractItemModel
 {
     Q_OBJECT
 
-    tc::FSceneNode* RootNode;
+    tc::FNode* RootNode;
 
 public:
-    FSceneModel(QObject *parent, tc::FSceneNode* rootNode);
+    FSceneModel(QObject *parent, tc::FNode* rootNode);
     // QAbstractItemModel interface
     QModelIndex index(int row, int column, const QModelIndex &parent) const override;
     QModelIndex parent(const QModelIndex &child) const override;
