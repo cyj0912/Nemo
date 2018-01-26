@@ -1,14 +1,11 @@
 #include "Shader.h"
 #include "EntityLibrary.h"
 #include "InputHandler.h"
+#include "InputEvent.h"
+#include "InputEventFromSDL2.h"
 
 #include <SDL.h>
 #include <OpenGL/gl3.h>
-#include <Vector3.h>
-#include <Vector4.h>
-#include <Quaternion.h>
-#include <Matrix3x4.h>
-#include <Ray.h>
 #include <ResourceManager.h>
 
 #include <Timeline.h>
@@ -41,10 +38,6 @@ class FPointPrimitive;
 FMetaInputHandler* metaInputHandler;
 FHighResolutionClock GTimeline;
 FRenderWorld* renderWorld;
-//FTranslateGizmo* translateGizmo;
-//FTranslateGizmoInputHandler* translateGizmoInputHandler;
-//FPointTranslateGizmo* pointTranslateGizmo;
-//FPointTranslateGizmoInputHandler* pointTranslateGizmoInputHandler;
 FCameraWithPivot* cameraWithPivot;
 FCameraInputHandler* cameraInputHandler;
 FGrid* mainGrid;
@@ -158,15 +151,6 @@ public:
     }
 };
 
-class IRayIntersectComponent
-{
-public:
-    virtual bool DoesRayHit(const Ray& ray) = 0;
-
-protected:
-    ~IRayIntersectComponent() = default;
-};
-
 class FCameraInputHandler : public IInputHandler
 {
     FCameraWithPivot* Camera;
@@ -178,21 +162,21 @@ public:
     explicit FCameraInputHandler(FCameraWithPivot* Camera) : Camera(Camera), AcceptLMBRotate(false)
     , MouseCurrentlyOrbit(false), MouseInFpsView(false) {}
 
-    bool KeyPressed(const SDL_KeyboardEvent& evt) override
+    bool KeyPressed(const FKeyboardEvent& evt) override
     {
-        if (evt.keysym.sym == SDLK_RGUI || evt.keysym.sym == SDLK_LALT)
+        if (evt.keysym.sym == EKeyCode::Rgui || evt.keysym.sym == EKeyCode::Lalt)
             AcceptLMBRotate = true;
         return false;
     }
 
-    bool KeyReleased(const SDL_KeyboardEvent& evt) override
+    bool KeyReleased(const FKeyboardEvent& evt) override
     {
-        if (evt.keysym.sym == SDLK_RGUI || evt.keysym.sym == SDLK_LALT)
+        if (evt.keysym.sym == EKeyCode::Rgui || evt.keysym.sym == EKeyCode::Lalt)
             AcceptLMBRotate = false;
         return false;
     }
 
-    bool MouseMoved(const SDL_MouseMotionEvent& evt) override
+    bool MouseMoved(const FMouseMotionEvent& evt) override
     {
         if (MouseCurrentlyOrbit)
         {
@@ -220,7 +204,7 @@ public:
         return false;
     }
 
-    bool MousePressed(const SDL_MouseButtonEvent& evt) override
+    bool MousePressed(const FMouseButtonEvent& evt) override
     {
         if (evt.button == SDL_BUTTON_LEFT && AcceptLMBRotate)
         {
@@ -243,7 +227,7 @@ public:
         return false;
     }
 
-    bool MouseReleased(const SDL_MouseButtonEvent& evt) override
+    bool MouseReleased(const FMouseButtonEvent& evt) override
     {
         if (evt.button == SDL_BUTTON_LEFT || evt.button == SDL_BUTTON_MIDDLE)
             MouseCurrentlyOrbit = false;
@@ -252,7 +236,7 @@ public:
         return false;
     }
 
-    bool MouseWheelRolled(const SDL_MouseWheelEvent& evt) override
+    bool MouseWheelRolled(const FMouseWheelEvent& evt) override
     {
         return IInputHandler::MouseWheelRolled(evt);
     }
@@ -278,50 +262,6 @@ public:
     {
         return Camera->GetViewProjectionMatrix();
     }
-};
-
-class FTransformComponent
-{
-public:
-    FTransformComponent()
-    {
-        TransformNode.AddRef();
-    }
-
-    FNode& GetTransformNode()
-    {
-        return TransformNode;
-    }
-
-    const FNode& GetTransformNode() const
-    {
-        return TransformNode;
-    }
-
-    const Matrix3x4& GetTransformMatrix() const
-    {
-        return TransformNode.GetTransformToWorld();
-    }
-
-private:
-    FNode TransformNode;
-};
-
-class FPositionComponent
-{
-public:
-    Matrix3x4 GetTransformMatrix() const
-    {
-        return Matrix3x4(Position, Quaternion::IDENTITY, Vector3::ONE);
-    }
-
-    Vector3& GetPosition()
-    {
-        return Position;
-    }
-
-protected:
-    Vector3 Position;
 };
 
 template <typename TOwner>
@@ -423,21 +363,6 @@ private:
     FRenderWorld* RenderWorld;
     GLuint Buffers[2]{}, VertexArrays[1]{};
     FGLSLProgram* Shader;
-};
-
-template <typename TOwner>
-class TBoxRayIntersectComponent : public IRayIntersectComponent
-{
-public:
-    bool DoesRayHit(const Ray& ray) override
-    {
-        auto worldToLocal = static_cast<TOwner*>(this)->GetTransformMatrix().Inverse();
-        auto localRay = ray.Transformed(worldToLocal);
-
-        BoundingBox bounding = BoundingBox(-1.0f, 1.0f);
-        float hitDist = localRay.HitDistance(bounding);
-        return hitDist < M_INFINITY;
-    }
 };
 
 class FBoxPrimitive : public FBaseEntity,
@@ -551,21 +476,6 @@ public:
 
 protected:
     FRenderWorld* RenderWorld;
-};
-
-template <typename TOwner>
-class TPointRayIntersectComponent : public IRayIntersectComponent
-{
-public:
-    bool DoesRayHit(const Ray& ray) override
-    {
-        auto worldToLocal = static_cast<TOwner*>(this)->GetTransformMatrix().Inverse();
-        auto localRay = ray.Transformed(worldToLocal);
-
-        BoundingBox bounding = BoundingBox(-0.1f, 0.1f);
-        float hitDist = localRay.HitDistance(bounding);
-        return hitDist < M_INFINITY;
-    }
 };
 
 class FPointPrimitive : public FBaseEntity, public FPositionComponent, public TPointRenderComponent<FPointPrimitive>, public TPointRayIntersectComponent<FPointPrimitive>
@@ -1043,7 +953,7 @@ public:
     {
     }
 
-    bool MouseMoved(const SDL_MouseMotionEvent& evt) override
+    bool MouseMoved(const FMouseMotionEvent& evt) override
     {
         if (bDraggingAlong)
         {
@@ -1078,7 +988,7 @@ public:
         return false;
     }
 
-    bool MousePressed(const SDL_MouseButtonEvent& evt) override
+    bool MousePressed(const FMouseButtonEvent& evt) override
     {
         if (evt.button == SDL_BUTTON_LEFT)
         {
@@ -1101,7 +1011,7 @@ public:
         return false;
     }
 
-    bool MouseReleased(const SDL_MouseButtonEvent& evt) override
+    bool MouseReleased(const FMouseButtonEvent& evt) override
     {
         bDraggingAlong = false;
         return false;
@@ -1125,7 +1035,7 @@ public:
     {
     }
 
-    bool MouseMoved(const SDL_MouseMotionEvent& evt) override
+    bool MouseMoved(const FMouseMotionEvent& evt) override
     {
         if (bDraggingAlong)
         {
@@ -1147,7 +1057,7 @@ public:
         return false;
     }
 
-    bool MousePressed(const SDL_MouseButtonEvent& evt) override
+    bool MousePressed(const FMouseButtonEvent& evt) override
     {
         if (evt.button == SDL_BUTTON_LEFT)
         {
@@ -1170,7 +1080,7 @@ public:
         return false;
     }
 
-    bool MouseReleased(const SDL_MouseButtonEvent& evt) override
+    bool MouseReleased(const FMouseButtonEvent& evt) override
     {
         bDraggingAlong = false;
         return false;
@@ -1290,9 +1200,9 @@ public:
             delete entity;
     }
 
-    bool KeyPressed(const SDL_KeyboardEvent& evt) override
+    bool KeyPressed(const FKeyboardEvent& evt) override
     {
-        if (evt.keysym.sym == SDLK_z)
+        if (evt.keysym.sym == EKeyCode::Z)
         {
             ToggleWireframe();
             return true;
@@ -1300,40 +1210,55 @@ public:
         return false;
     }
 
-    bool KeyReleased(const SDL_KeyboardEvent& evt) override
+    bool KeyReleased(const FKeyboardEvent& evt) override
     {
         return false;
     }
 
-    bool MousePressed(const SDL_MouseButtonEvent& evt) override
+    bool MousePressed(const FMouseButtonEvent& evt) override
     {
         if (evt.button == SDL_BUTTON_LEFT)
         {
             auto worldRay = cameraWithPivot->GetRayTo(evt.x, evt.y);
 
+            //The closer entity wins if contested
+            NewSelectedEntity = nullptr;
+            float minHitDistance = M_INFINITY;
             for (auto* entity : EntityVector)
             {
                 auto* rayIntersectComp = dynamic_cast<IRayIntersectComponent*>(entity);
-                if (rayIntersectComp && rayIntersectComp->DoesRayHit(worldRay))
+                if (rayIntersectComp)
                 {
-                    NewSelectedEntity = entity;
-                    if (NewSelectedEntity != SelectedEntity)
+                    float distance = rayIntersectComp->RayHitDistance(worldRay);
+                    if(distance < minHitDistance)
                     {
-                        RemoveGizmos();
-                        CreateGizmoFor(NewSelectedEntity);
-                        SelectedEntity = NewSelectedEntity;
+                        NewSelectedEntity = entity;
+                        minHitDistance = distance;
                     }
-                    return true;
                 }
             }
-            NewSelectedEntity = nullptr;
+
+            if (NewSelectedEntity)
+            {
+                if (NewSelectedEntity != SelectedEntity)
+                {
+                    RemoveGizmos();
+                    CreateGizmoFor(NewSelectedEntity);
+                    SelectedEntity = NewSelectedEntity;
+                    return true;
+                }
+
+                //Selected the original selected, nothing happens
+                return false;
+            }
+
+            //When the new selection is nothing
             if (NewSelectedEntity != SelectedEntity)
             {
                 RemoveGizmos();
                 SelectedEntity = NewSelectedEntity;
             }
         }
-
         return false;
     }
 
@@ -1483,8 +1408,8 @@ private:
 void myGlSetup()
 {
     GTimeline.Init();
-    metaInputHandler = new FMetaInputHandler();
     editorMaster = new FEditorMaster();
+    metaInputHandler = new FMetaInputHandler();
     metaInputHandler->Insert(editorMaster);
 
     cameraWithPivot = new FCameraWithPivot();
@@ -1498,26 +1423,8 @@ void myGlSetup()
 
     FRayVisualizer::RenderStaticInit();
 
-    //testPointPrimitive = new FPointPrimitive();
-    //testPointPrimitive->GetPosition() = Vector3::ONE;
-    //testPointPrimitive->RenderStaticInit();
-    //testPointPrimitive->RenderInit(renderWorld);
-
     mainGrid = new FGrid();
     mainGrid->RenderInit(renderWorld);
-
-    //static FNode nodetest;
-    //translateGizmo = new FTranslateGizmo(&box->GetTransformNode());
-    //translateGizmo = new FTranslateGizmo(&nodetest);
-    //translateGizmo->RenderInit(renderWorld);
-
-    //translateGizmoInputHandler = new FTranslateGizmoInputHandler(translateGizmo, cameraWithPivot);
-    //metaInputHandler->Insert(translateGizmoInputHandler);
-
-    //pointTranslateGizmo = new FPointTranslateGizmo(&testPointPrimitive->GetPosition());
-    //pointTranslateGizmo->RenderInit(renderWorld);
-    //pointTranslateGizmoInputHandler = new FPointTranslateGizmoInputHandler(pointTranslateGizmo, cameraWithPivot);
-    //metaInputHandler->Insert(pointTranslateGizmoInputHandler);
 
     vg = nvgCreateGL3(NVG_ANTIALIAS | NVG_STENCIL_STROKES | NVG_DEBUG);
 
@@ -1532,8 +1439,8 @@ void myGlSetup()
     ImGui_ImplSdlGL3_Init();
     ImGui::StyleColorsDark();
     ImGuiIO& io = ImGui::GetIO();
-    io.Fonts->AddFontDefault();
     io.Fonts->AddFontFromFileTTF(GResourceManager.FindFile("Roboto-Light.ttf").c_str(), 20.0f);
+    io.Fonts->AddFontDefault();
 }
 
 void myGlRender(SDL_Window* window)
@@ -1557,11 +1464,6 @@ void myGlRender(SDL_Window* window)
     mainGrid->Render();
 
     editorMaster->Render();
-
-    //glDisable(GL_DEPTH_TEST);
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    //translateGizmo->Render();
-    //pointTranslateGizmo->Render();
 
     frameCount++;
     double fps = (double)frameCount * 1000.0 / (double)GTimeline.NowMilliSec();
@@ -1650,8 +1552,8 @@ int main()
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-    SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 8);
+    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+    //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 8);
     SDL_GLContext glContext = SDL_GL_CreateContext(window);
 
     auto* verStr = glGetString(GL_VERSION);
@@ -1669,17 +1571,17 @@ int main()
             if (e.type == SDL_QUIT)
                 quit = true;
             else if (e.type == SDL_KEYDOWN)
-                metaInputHandler->KeyPressed(e.key);
+                metaInputHandler->KeyPressed(ConvertKeyboardEvent(e.key));
             else if (e.type == SDL_KEYUP)
-                metaInputHandler->KeyReleased(e.key);
+                metaInputHandler->KeyReleased(ConvertKeyboardEvent(e.key));
             else if (e.type == SDL_MOUSEMOTION)
-                metaInputHandler->MouseMoved(e.motion);
+                metaInputHandler->MouseMoved(ConvertMouseMotionEvent(e.motion));
             else if (e.type == SDL_MOUSEBUTTONDOWN)
-                metaInputHandler->MousePressed(e.button);
+                metaInputHandler->MousePressed(ConvertMouseButtonEvent(e.button));
             else if (e.type == SDL_MOUSEBUTTONUP)
-                metaInputHandler->MouseReleased(e.button);
+                metaInputHandler->MouseReleased(ConvertMouseButtonEvent(e.button));
             else if (e.type == SDL_MOUSEWHEEL)
-                metaInputHandler->MouseWheelRolled(e.wheel);
+                metaInputHandler->MouseWheelRolled(ConvertMouseWheelEvent(e.wheel));
         }
         myGlRender(window);
         SDL_GL_SwapWindow(window);

@@ -1,5 +1,6 @@
 #pragma once
-#include <SDL_events.h>
+
+#include "InputEvent.h"
 
 namespace tc
 {
@@ -15,12 +16,12 @@ public:
             NextHandler->PrevHandler = PrevHandler;
     }
 
-    virtual bool KeyPressed(const SDL_KeyboardEvent& evt) { return false; }
-    virtual bool KeyReleased(const SDL_KeyboardEvent& evt) { return false; }
-    virtual bool MouseMoved(const SDL_MouseMotionEvent &evt) { return false; }
-    virtual bool MousePressed(const SDL_MouseButtonEvent &evt) { return false; }
-    virtual bool MouseReleased(const SDL_MouseButtonEvent &evt) { return false; }
-    virtual bool MouseWheelRolled(const SDL_MouseWheelEvent &evt) { return false; }
+    virtual bool KeyPressed(const FKeyboardEvent& evt) { return false; }
+    virtual bool KeyReleased(const FKeyboardEvent& evt) { return false; }
+    virtual bool MouseMoved(const FMouseMotionEvent &evt) { return false; }
+    virtual bool MousePressed(const FMouseButtonEvent &evt) { return false; }
+    virtual bool MouseReleased(const FMouseButtonEvent &evt) { return false; }
+    virtual bool MouseWheelRolled(const FMouseWheelEvent &evt) { return false; }
 
     IInputHandler* PrevHandler = nullptr;
     IInputHandler* NextHandler = nullptr;
@@ -29,17 +30,17 @@ public:
 class FMetaInputHandler : public IInputHandler
 {
 public:
-    bool KeyPressed(const SDL_KeyboardEvent& evt) override;
+    bool KeyPressed(const FKeyboardEvent& evt) override;
 
-    bool KeyReleased(const SDL_KeyboardEvent& evt) override;
+    bool KeyReleased(const FKeyboardEvent& evt) override;
 
-    bool MouseMoved(const SDL_MouseMotionEvent& evt) override;
+    bool MouseMoved(const FMouseMotionEvent& evt) override;
 
-    bool MousePressed(const SDL_MouseButtonEvent& evt) override;
+    bool MousePressed(const FMouseButtonEvent& evt) override;
 
-    bool MouseReleased(const SDL_MouseButtonEvent& evt) override;
+    bool MouseReleased(const FMouseButtonEvent& evt) override;
 
-    bool MouseWheelRolled(const SDL_MouseWheelEvent& evt) override;
+    bool MouseWheelRolled(const FMouseWheelEvent& evt) override;
 
     void Insert(IInputHandler* handler);
 

@@ -3,8 +3,7 @@
 namespace tc
 {
 
-
-bool FMetaInputHandler::KeyPressed(const SDL_KeyboardEvent& evt)
+bool FMetaInputHandler::KeyPressed(const FKeyboardEvent& evt)
 {
     bool handled = false;
     IInputHandler* next = NextHandler;
@@ -16,7 +15,7 @@ bool FMetaInputHandler::KeyPressed(const SDL_KeyboardEvent& evt)
     return handled;
 }
 
-bool FMetaInputHandler::KeyReleased(const SDL_KeyboardEvent& evt)
+bool FMetaInputHandler::KeyReleased(const FKeyboardEvent& evt)
 {
     bool handled = false;
     IInputHandler* next = NextHandler;
@@ -28,7 +27,7 @@ bool FMetaInputHandler::KeyReleased(const SDL_KeyboardEvent& evt)
     return handled;
 }
 
-bool FMetaInputHandler::MouseMoved(const SDL_MouseMotionEvent& evt)
+bool FMetaInputHandler::MouseMoved(const FMouseMotionEvent& evt)
 {
     bool handled = false;
     IInputHandler* next = NextHandler;
@@ -40,7 +39,7 @@ bool FMetaInputHandler::MouseMoved(const SDL_MouseMotionEvent& evt)
     return handled;
 }
 
-bool FMetaInputHandler::MousePressed(const SDL_MouseButtonEvent& evt)
+bool FMetaInputHandler::MousePressed(const FMouseButtonEvent& evt)
 {
     bool handled = false;
     IInputHandler* next = NextHandler;
@@ -52,7 +51,7 @@ bool FMetaInputHandler::MousePressed(const SDL_MouseButtonEvent& evt)
     return handled;
 }
 
-bool FMetaInputHandler::MouseReleased(const SDL_MouseButtonEvent& evt)
+bool FMetaInputHandler::MouseReleased(const FMouseButtonEvent& evt)
 {
     bool handled = false;
     IInputHandler* next = NextHandler;
@@ -64,7 +63,7 @@ bool FMetaInputHandler::MouseReleased(const SDL_MouseButtonEvent& evt)
     return handled;
 }
 
-bool FMetaInputHandler::MouseWheelRolled(const SDL_MouseWheelEvent& evt)
+bool FMetaInputHandler::MouseWheelRolled(const FMouseWheelEvent& evt)
 {
     bool handled = false;
     IInputHandler* next = NextHandler;
