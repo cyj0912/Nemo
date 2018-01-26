@@ -4,8 +4,9 @@
 #include "InputEvent.h"
 #include "InputEventFromSDL2.h"
 
+#include "OpenGL.h"
+
 #include <SDL.h>
-#include <OpenGL/gl3.h>
 #include <ResourceManager.h>
 
 #include <Timeline.h>

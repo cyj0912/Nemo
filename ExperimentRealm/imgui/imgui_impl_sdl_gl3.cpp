@@ -14,7 +14,8 @@
 // SDL
 #include <SDL.h>
 #include <SDL_syswm.h>
-#include <OpenGL/gl3.h>    // This example is using gl3w to access OpenGL functions (because it is small). You may use glew/glad/glLoadGen/etc. whatever already works for you.
+
+#include "../OpenGL.h"
 
 // Data
 static double       g_Time = 0.0f;
