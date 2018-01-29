@@ -25,8 +25,7 @@ RImage::RImage(const string id) : Type(ImageType::Image2D), Depth(1)
 
 RImage::~RImage()
 {
-	if (Data)
-		delete[] Data;
+	delete[] Data;
 }
 
 int RImage::GetDataSize() const
@@ -55,7 +54,6 @@ int RImage::GetDataSize() const
 	case ImageType::CubeMapArray:
 		numElements = Width * Height * 6 * NumComponent;
 		break;
-	default: ;
 	}
 	return numElements * sizeof(ComponentType);
 }

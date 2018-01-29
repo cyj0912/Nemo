@@ -3,11 +3,15 @@
 #include "InputHandler.h"
 #include "InputEvent.h"
 #include "InputEventFromSDL2.h"
+#include "RenderComponent.h"
+#include "EditorMaster.h"
+#include "RayVisualize.h"
 
 #include "OpenGL.h"
 
 #include <SDL.h>
 #include <ResourceManager.h>
+#include <Image.h>
 
 #include <Timeline.h>
 
@@ -23,134 +27,25 @@
 
 using namespace tc;
 
-class FRenderWorld;
-class FBoxPrimitive;
-class FTranslateGizmo;
-class FTranslateGizmoInputHandler;
-class FPointTranslateGizmo;
-class FPointTranslateGizmoInputHandler;
-class FCameraWithPivot;
 class FCameraInputHandler;
+
+namespace tc
+{
+
 class FGrid;
-class FRayVisualizer;
-class FEditorMaster;
-class FPointPrimitive;
+
+}
 
 FMetaInputHandler* metaInputHandler;
 FHighResolutionClock GTimeline;
-FRenderWorld* renderWorld;
+FViewPort* renderWorld;
 FCameraWithPivot* cameraWithPivot;
 FCameraInputHandler* cameraInputHandler;
 FGrid* mainGrid;
-FRayVisualizer* rayVisualizer;
 FEditorMaster* editorMaster;
-//FPointPrimitive* testPointPrimitive;
 NVGcontext* vg;
 long long frameCount = 0;
 bool bShowStyleEditor;
-
-class FCameraWithPivot
-{
-    FNode CameraPivot;
-    FNode CameraTransform;
-    FCamera Camera;
-public:
-    FCameraWithPivot()
-    {
-        CameraPivot.AddRef();
-        CameraTransform.AddRef();
-        CameraPivot.AddChild(&CameraTransform);
-        Camera.SetZFar(100.f);
-    }
-
-    FNode& GetCameraPivot()
-    {
-        return CameraPivot;
-    }
-
-    FNode& GetCameraTransform()
-    {
-        return CameraTransform;
-    }
-
-    FCamera& GetCamera()
-    {
-        return Camera;
-    }
-
-    Matrix4 GetViewMatrix()
-    {
-        return GetCameraTransform().GetTransformFromWorld().ToMatrix4();
-    }
-
-    Matrix4 GetProjectionMatrix()
-    {
-        return GetCamera().GetProjectionMatrix();
-    }
-
-    Matrix4 GetViewProjectionMatrix()
-    {
-        return GetProjectionMatrix() * GetViewMatrix();
-    }
-
-    //TODO: Very very hackish. Rethink the viewport hierarchy
-    Ray GetRayTo(int screenX, int screenY)
-    {
-        //TODO: No hard coded screen size
-        const int width = 1600;
-        const int height = 900;
-        auto cameraPos = CameraTransform.GetWorldTranslation();
-        auto vpMatrix = GetViewProjectionMatrix();
-        auto ndcToWorld = vpMatrix.Inverse();
-        float ndcX = (float)screenX / (float)width * 2.0f - 1.0f;
-        float ndcY = 1.0f - 2.0f * (float)screenY / (float)height;
-        //Vector4 worldNear = ndcToWorld * Vector4(ndcX, ndcY, -1.0f, 1.0f);
-        //Vector3 near(worldNear[0] / worldNear[3], worldNear[1] / worldNear[3], worldNear[2] / worldNear[3]);
-        Vector4 worldMiddle = ndcToWorld * Vector4(ndcX, ndcY, 0.0f, 1.0f);
-        Vector3 middle(worldMiddle[0] / worldMiddle[3], worldMiddle[1] / worldMiddle[3], worldMiddle[2] / worldMiddle[3]);
-        return Ray(cameraPos, middle - cameraPos);
-    }
-};
-
-class IRenderComponent
-{
-public:
-    virtual void RenderInit(FRenderWorld* rw) = 0;
-    virtual void Render() = 0;
-    virtual void RenderDestroy() = 0;
-
-    IRenderComponent* PrevRenderComponent = nullptr;
-    IRenderComponent* NextRenderComponent = nullptr;
-
-protected:
-    ~IRenderComponent()
-    {
-        if (PrevRenderComponent)
-            PrevRenderComponent->NextRenderComponent = NextRenderComponent;
-        if (NextRenderComponent)
-            NextRenderComponent->PrevRenderComponent = PrevRenderComponent;
-    }
-};
-
-//Used as linked list head
-class FDummyRenderComponent : public IRenderComponent
-{
-public:
-    void RenderInit(FRenderWorld* rw) override {}
-
-    void Render() override {}
-
-    void RenderDestroy() override {}
-
-    void Insert(IRenderComponent* item)
-    {
-        IRenderComponent* next = this;
-        while (next->NextRenderComponent)
-            next = next->NextRenderComponent;
-        next->NextRenderComponent = item;
-        item->PrevRenderComponent = next;
-    }
-};
 
 class FCameraInputHandler : public IInputHandler
 {
@@ -243,35 +138,13 @@ public:
     }
 };
 
-class FRenderWorld
-{
-    FCameraWithPivot* Camera;
-public:
-    explicit FRenderWorld(FCameraWithPivot* c) : Camera(c) {}
-
-    Matrix4 GetViewMatrix()
-    {
-        return Camera->GetViewMatrix();
-    }
-
-    Matrix4 GetProjectionMatrix()
-    {
-        return Camera->GetProjectionMatrix();
-    }
-
-    Matrix4 GetViewProjectionMatrix()
-    {
-        return Camera->GetViewProjectionMatrix();
-    }
-};
-
 template <typename TOwner>
 class TBoxRenderComponent : public IRenderComponent
 {
 public:
     TBoxRenderComponent() : RenderWorld(nullptr), Shader(nullptr) {}
 
-    void RenderInit(FRenderWorld* rw) override
+    void RenderInit(FViewPort* rw) override
     {
         RenderWorld = rw;
 
@@ -361,7 +234,7 @@ public:
     }
 
 private:
-    FRenderWorld* RenderWorld;
+    FViewPort* RenderWorld;
     GLuint Buffers[2]{}, VertexArrays[1]{};
     FGLSLProgram* Shader;
 };
@@ -450,7 +323,7 @@ class TPointRenderComponent : public IRenderComponent, public FPointRenderCompon
 public:
     TPointRenderComponent() : RenderWorld(nullptr) {}
 
-    void RenderInit(FRenderWorld* rw) override
+    void RenderInit(FViewPort* rw) override
     {
         RenderStaticInit();
         RenderWorld = rw;
@@ -476,7 +349,7 @@ public:
     }
 
 protected:
-    FRenderWorld* RenderWorld;
+    FViewPort* RenderWorld;
 };
 
 class FPointPrimitive : public FBaseEntity, public FPositionComponent, public TPointRenderComponent<FPointPrimitive>, public TPointRayIntersectComponent<FPointPrimitive>
@@ -489,123 +362,8 @@ public:
     }
 };
 
-class FRayRenderComponentStaticData
+namespace tc
 {
-public:
-    FRayRenderComponentStaticData()
-    {
-        UserCount++;
-    }
-
-    ~FRayRenderComponentStaticData()
-    {
-        UserCount--;
-    }
-
-    static void RenderStaticInit()
-    {
-        if (bInitialized)
-            return;
-        bInitialized = true;
-
-        LOGDEBUG("FRayRenderComponentStaticData::RenderStaticInit called and ran\n");
-
-        glGenBuffers(1, Buffers);
-        glGenVertexArrays(1, VertexArrays);
-        glBindVertexArray(VertexArrays[0]);
-
-        glBindBuffer(GL_ARRAY_BUFFER, Buffers[0]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 6, nullptr, GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-        glEnableVertexAttribArray(0);
-
-        glBindVertexArray(0);
-
-        Shader = FGLSLProgram::CreateFromFiles("fgizmocolor.vert", "fgizmocolor.frag");
-    }
-
-    static void RenderStaticDestroy()
-    {
-        if (!bInitialized || UserCount > 0)
-            return;
-
-        LOGDEBUG("FRayRenderComponentStaticData::RenderStaticDestroy called and ran\n");
-
-        delete Shader;
-        glDeleteBuffers(1, Buffers);
-        glDeleteVertexArrays(1, VertexArrays);
-    }
-
-protected:
-    static int UserCount;
-    static bool bInitialized;
-    static GLuint Buffers[1];
-    static GLuint VertexArrays[1];
-    static FGLSLProgram* Shader;
-};
-
-int FRayRenderComponentStaticData::UserCount = 0;
-bool FRayRenderComponentStaticData::bInitialized = false;
-GLuint FRayRenderComponentStaticData::Buffers[1];
-GLuint FRayRenderComponentStaticData::VertexArrays[1];
-FGLSLProgram* FRayRenderComponentStaticData::Shader;
-
-template <typename TOwner>
-class TRayRenderComponent : public IRenderComponent, public FRayRenderComponentStaticData
-{
-public:
-    TRayRenderComponent() : RenderWorld(nullptr) {}
-
-    void RenderInit(FRenderWorld* rw) override
-    {
-        RenderStaticInit();
-        RenderWorld = rw;
-    }
-
-    void Render() override
-    {
-        Shader->Enable();
-        Shader->SetUniformMatrix4fv("uModelViewProjectionMatrix",
-                                    RenderWorld->GetViewProjectionMatrix().Data(), 1, true);
-        Shader->SetUniform3f("uColor", 1.0, 1.0, 0.0);
-
-        const auto& ray = static_cast<TOwner*>(this)->GetRay();
-
-        static_assert(sizeof(ray) == sizeof(float) * 6);
-        Vector3 ends[2];
-        ends[0] = ray.Origin;
-        ends[1] = ray.Direction * 50.0f + ray.Origin;
-
-        glBindBuffer(GL_ARRAY_BUFFER, Buffers[0]);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(float) * 6, ends[0].Data());
-
-        glBindVertexArray(VertexArrays[0]);
-        glDrawArrays(GL_LINES, 0, 2);
-        glBindVertexArray(0);
-    }
-
-    void RenderDestroy() override
-    {
-        RenderStaticDestroy();
-    }
-
-protected:
-    FRenderWorld* RenderWorld;
-};
-
-class FRayVisualizer : public TRayRenderComponent<FRayVisualizer>
-{
-public:
-    explicit FRayVisualizer(const Ray& r) : TheRay(r) {}
-
-    const Ray& GetRay()
-    {
-        return TheRay;
-    }
-
-private:
-    Ray TheRay;
-};
 
 enum class EAxis : uint8_t
 {
@@ -621,7 +379,7 @@ class TTranslateGizmoRenderComponent : public IRenderComponent
 public:
     TTranslateGizmoRenderComponent() : RenderWorld(nullptr), Shader(nullptr) {}
 
-    void RenderInit(FRenderWorld* rw) override
+    void RenderInit(FViewPort* rw) override
     {
         RenderWorld = rw;
 
@@ -771,7 +529,7 @@ public:
     }
 
 private:
-    FRenderWorld* RenderWorld;
+    FViewPort* RenderWorld;
     GLuint Buffers[3]{}, VertexArrays[2]{};
     FGLSLProgram* Shader;
 };
@@ -994,10 +752,6 @@ public:
         if (evt.button == SDL_BUTTON_LEFT)
         {
             auto ray = CurrentCamera->GetRayTo(evt.x, evt.y);
-            delete rayVisualizer;
-            rayVisualizer = new FRayVisualizer(ray);
-            rayVisualizer->RenderInit(renderWorld);
-
             auto hit = Gizmo->HitWorldSpaceRay(ray);
             if (hit != EAxis::None)
             {
@@ -1063,10 +817,6 @@ public:
         if (evt.button == SDL_BUTTON_LEFT)
         {
             auto ray = CurrentCamera->GetRayTo(evt.x, evt.y);
-            delete rayVisualizer;
-            rayVisualizer = new FRayVisualizer(ray);
-            rayVisualizer->RenderInit(renderWorld);
-
             auto hit = Gizmo->HitWorldSpaceRay(ray);
             if (hit != EAxis::None)
             {
@@ -1101,7 +851,7 @@ private:
 class FGrid
 {
     // Component: Render
-    FRenderWorld* RenderWorld;
+    FViewPort* RenderWorld;
     GLuint Buffers[1]{}, VertexArrays[1]{};
     FGLSLProgram* Shader;
     int NumLines;
@@ -1114,7 +864,7 @@ public:
     {
     }
 
-    void RenderInit(FRenderWorld* rw)
+    void RenderInit(FViewPort* rw)
     {
         RenderWorld = rw;
 
@@ -1186,225 +936,389 @@ public:
     }
 };
 
-class FEditorMaster : public IInputHandler
+FEditorMaster::FEditorMaster() : bWireframe(false), SelectedEntity(nullptr),TranslateGizmo(nullptr),
+                  TranslateGizmoInputHandler(nullptr), PointTranslateGizmo(nullptr),
+                  PointTranslateGizmoInputHandler(nullptr), bToQuit(false)
 {
-public:
-    FEditorMaster() : bWireframe(false), SelectedEntity(nullptr),TranslateGizmo(nullptr),
-                      TranslateGizmoInputHandler(nullptr), PointTranslateGizmo(nullptr),
-                      PointTranslateGizmoInputHandler(nullptr)
-    {
-    }
+}
 
-    ~FEditorMaster() override
+FEditorMaster::~FEditorMaster()
+{
+    for (auto* entity : EntityVector)
+        delete entity;
+}
+
+
+bool FEditorMaster::KeyPressed(const FKeyboardEvent& evt)
+{
+    if (evt.keysym.sym == EKeyCode::Z)
     {
+        ToggleWireframe();
+        return true;
+    }
+    return false;
+}
+
+bool FEditorMaster::KeyReleased(const FKeyboardEvent& evt)
+{
+    return false;
+}
+
+bool FEditorMaster::MousePressed(const FMouseButtonEvent& evt)
+{
+    if (evt.button == SDL_BUTTON_LEFT)
+    {
+        auto worldRay = cameraWithPivot->GetRayTo(evt.x, evt.y);
+
+        //The closer entity wins if contested
+        FBaseEntity* NewSelectedEntity = nullptr;
+        float minHitDistance = M_INFINITY;
         for (auto* entity : EntityVector)
-            delete entity;
-    }
-
-    bool KeyPressed(const FKeyboardEvent& evt) override
-    {
-        if (evt.keysym.sym == EKeyCode::Z)
         {
-            ToggleWireframe();
-            return true;
+            auto* rayIntersectComp = dynamic_cast<IRayIntersectComponent*>(entity);
+            if (rayIntersectComp)
+            {
+                float distance = rayIntersectComp->RayHitDistance(worldRay);
+                if(distance < minHitDistance)
+                {
+                    NewSelectedEntity = entity;
+                    minHitDistance = distance;
+                }
+            }
         }
-        return false;
-    }
 
-    bool KeyReleased(const FKeyboardEvent& evt) override
-    {
-        return false;
-    }
-
-    bool MousePressed(const FMouseButtonEvent& evt) override
-    {
-        if (evt.button == SDL_BUTTON_LEFT)
+        if (NewSelectedEntity)
         {
-            auto worldRay = cameraWithPivot->GetRayTo(evt.x, evt.y);
-
-            //The closer entity wins if contested
-            NewSelectedEntity = nullptr;
-            float minHitDistance = M_INFINITY;
-            for (auto* entity : EntityVector)
-            {
-                auto* rayIntersectComp = dynamic_cast<IRayIntersectComponent*>(entity);
-                if (rayIntersectComp)
-                {
-                    float distance = rayIntersectComp->RayHitDistance(worldRay);
-                    if(distance < minHitDistance)
-                    {
-                        NewSelectedEntity = entity;
-                        minHitDistance = distance;
-                    }
-                }
-            }
-
-            if (NewSelectedEntity)
-            {
-                if (NewSelectedEntity != SelectedEntity)
-                {
-                    RemoveGizmos();
-                    CreateGizmoFor(NewSelectedEntity);
-                    SelectedEntity = NewSelectedEntity;
-                    return true;
-                }
-
-                //Selected the original selected, nothing happens
-                return false;
-            }
-
-            //When the new selection is nothing
             if (NewSelectedEntity != SelectedEntity)
             {
                 RemoveGizmos();
+                CreateGizmoFor(NewSelectedEntity);
                 SelectedEntity = NewSelectedEntity;
+                return true;
             }
-        }
-        return false;
-    }
 
-    void CreateGizmoFor(FBaseEntity* entity)
-    {
-        if (dynamic_cast<FBoxPrimitive*>(entity))
-        {
-            auto* box = dynamic_cast<FBoxPrimitive*>(entity);
-            TranslateGizmo = new FTranslateGizmo(&box->GetTransformNode());
-            TranslateGizmo->RenderInit(renderWorld);
-            TranslateGizmoInputHandler = new FTranslateGizmoInputHandler(TranslateGizmo, cameraWithPivot);
-            metaInputHandler->InsertFront(TranslateGizmoInputHandler);
+            //Selected the original selected, nothing happens
+            return false;
         }
-        else if (dynamic_cast<FPointPrimitive*>(entity))
+
+        //When the new selection is nothing
+        if (NewSelectedEntity != SelectedEntity)
         {
-            auto* point = dynamic_cast<FPointPrimitive*>(entity);
-            PointTranslateGizmo = new FPointTranslateGizmo(&point->GetPosition());
-            PointTranslateGizmo->RenderInit(renderWorld);
-            PointTranslateGizmoInputHandler = new FPointTranslateGizmoInputHandler(PointTranslateGizmo, cameraWithPivot);
-            metaInputHandler->InsertFront(PointTranslateGizmoInputHandler);
+            RemoveGizmos();
+            SelectedEntity = NewSelectedEntity;
         }
     }
+    return false;
+}
 
-    void RemoveGizmos()
+void FEditorMaster::CreateGizmoFor(FBaseEntity* entity)
+{
+    if (dynamic_cast<FBoxPrimitive*>(entity))
     {
-        delete TranslateGizmoInputHandler;
-        TranslateGizmoInputHandler = nullptr;
+        auto* box = dynamic_cast<FBoxPrimitive*>(entity);
+        TranslateGizmo = new FTranslateGizmo(&box->GetTransformNode());
+        TranslateGizmo->RenderInit(renderWorld);
+        TranslateGizmoInputHandler = new FTranslateGizmoInputHandler(TranslateGizmo, cameraWithPivot);
+        metaInputHandler->InsertFront(TranslateGizmoInputHandler);
+    }
+    else if (dynamic_cast<FPointPrimitive*>(entity))
+    {
+        auto* point = dynamic_cast<FPointPrimitive*>(entity);
+        PointTranslateGizmo = new FPointTranslateGizmo(&point->GetPosition());
+        PointTranslateGizmo->RenderInit(renderWorld);
+        PointTranslateGizmoInputHandler = new FPointTranslateGizmoInputHandler(PointTranslateGizmo, cameraWithPivot);
+        metaInputHandler->InsertFront(PointTranslateGizmoInputHandler);
+    }
+}
 
-        if (TranslateGizmo)
-            TranslateGizmo->RenderDestroy();
-        delete TranslateGizmo;
-        TranslateGizmo = nullptr;
+void FEditorMaster::RemoveGizmos()
+{
+    delete TranslateGizmoInputHandler;
+    TranslateGizmoInputHandler = nullptr;
 
-        delete PointTranslateGizmoInputHandler;
-        PointTranslateGizmoInputHandler = nullptr;
+    if (TranslateGizmo)
+        TranslateGizmo->RenderDestroy();
+    delete TranslateGizmo;
+    TranslateGizmo = nullptr;
 
-        if (PointTranslateGizmo)
-            PointTranslateGizmo->RenderDestroy();
-        delete PointTranslateGizmo;
-        PointTranslateGizmo = nullptr;
+    delete PointTranslateGizmoInputHandler;
+    PointTranslateGizmoInputHandler = nullptr;
+
+    if (PointTranslateGizmo)
+        PointTranslateGizmo->RenderDestroy();
+    delete PointTranslateGizmo;
+    PointTranslateGizmo = nullptr;
+}
+
+void FEditorMaster::ToggleWireframe()
+{
+    bWireframe = !bWireframe;
+}
+
+bool FEditorMaster::IsWireframe() const
+{
+    return bWireframe;
+}
+
+void FEditorMaster::ImGuiUpdate()
+{
+    if (ImGui::BeginMainMenuBar())
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Exit"))
+                SetQuitting(true);
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Edit"))
+        {
+            if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
+            if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {}  // Disabled item
+            ImGui::Separator();
+            if (ImGui::MenuItem("Cut", "CTRL+X")) {}
+            if (ImGui::MenuItem("Copy", "CTRL+C")) {}
+            if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+            ImGui::EndMenu();
+        }
+        ImGui::EndMainMenuBar();
     }
 
-    void ToggleWireframe()
+    ImGui::Begin("Primitives");
+    ImGui::Text("Current selection:");
+    if (SelectedEntity)
+        ImGui::Text("%s", SelectedEntity->GetTypeNameInString());
+    else
+        ImGui::Text("<None>");
+    ImGui::Text("You can add primitives with this panel");
+    if (ImGui::Button("Box"))
     {
-        bWireframe = !bWireframe;
+        auto* box = new FBoxPrimitive();
+        box->RenderInit(renderWorld);
+        EntityVector.push_back(box);
+        RenderComponentListHead.Insert(box);
+    }
+    if (ImGui::Button("Point"))
+    {
+        auto* point = new FPointPrimitive();
+        point->RenderInit(renderWorld);
+        EntityVector.push_back(point);
+        RenderComponentListHead.Insert(point);
+    }
+    ImGui::Button("Bezier Control Point");
+    ImGui::End();
+}
+
+void FEditorMaster::Render()
+{
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LEQUAL);
+
+    auto* item = RenderComponentListHead.NextRenderComponent;
+    while (item)
+    {
+        item->Render();
+        item = item->NextRenderComponent;
     }
 
-    bool IsWireframe() const
+    glDisable(GL_DEPTH_TEST);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    if (TranslateGizmo)
+        TranslateGizmo->Render();
+
+    if (PointTranslateGizmo)
+        PointTranslateGizmo->Render();
+}
+
+void FEditorMaster::RenderDestroy()
+{
+    RemoveGizmos();
+
+    auto* item = RenderComponentListHead.NextRenderComponent;
+    while (item)
     {
-        return bWireframe;
+        item->RenderDestroy();
+        item = item->NextRenderComponent;
+    }
+}
+
+bool FEditorMaster::IsQuitting() const
+{
+    return bToQuit;
+}
+
+void FEditorMaster::SetQuitting(bool v)
+{
+    bToQuit = v;
+}
+
+FViewPort* FEditorMaster::GetViewPort() const
+{
+    return renderWorld;
+}
+
+}
+
+//Testing area
+class FSkyboxRenderData
+{
+public:
+    static void RenderStaticInit()
+    {
+        // Skybox geometry
+        float boxVertices[] = {
+                -1.0f, -1.0f, 1.0f,
+                -1.0f, 1.0f, -1.0f,
+                -1.0f, -1.0f, -1.0f,
+                -1.0f, 1.0f, 1.0f,
+                1.0f, 1.0f, -1.0f,
+                -1.0f, 1.0f, -1.0f,
+                1.0f, 1.0f, 1.0f,
+                1.0f, -1.0f, -1.0f,
+                1.0f, 1.0f, -1.0f,
+                1.0f, -1.0f, 1.0f,
+                -1.0f, -1.0f, -1.0f,
+                1.0f, -1.0f, -1.0f,
+                1.0f, 1.0f, -1.0f,
+                -1.0f, -1.0f, -1.0f,
+                -1.0f, 1.0f, -1.0f,
+                -1.0f, 1.0f, 1.0f,
+                1.0f, -1.0f, 1.0f,
+                1.0f, 1.0f, 1.0f,
+                -1.0f, 1.0f, 1.0f,
+                1.0f, 1.0f, 1.0f,
+                1.0f, -1.0f, 1.0f,
+                -1.0f, -1.0f, 1.0f,
+                1.0f, -1.0f, -1.0f,
+                -1.0f, -1.0f, 1.0f,
+        };
+
+        unsigned short boxIndices[] = {
+                0, 1, 2,
+                3, 4, 5,
+                6, 7, 8,
+                9, 10, 11,
+                12, 13, 14,
+                15, 16, 17,
+                0, 18, 1,
+                3, 19, 4,
+                6, 20, 7,
+                9, 21, 10,
+                12, 22, 13,
+                15, 23, 16
+        };
+
+        glGenBuffers(2, Buffers);
+        glGenVertexArrays(1, VertexArrays);
+        glBindVertexArray(VertexArrays[0]);
+
+        glBindBuffer(GL_ARRAY_BUFFER, Buffers[0]);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(boxVertices), boxVertices, GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+        glEnableVertexAttribArray(0);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Buffers[1]);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(boxIndices), boxIndices, GL_STATIC_DRAW);
+
+        glBindVertexArray(0);
+
+        ShaderSkybox = FGLSLProgram::CreateFromFiles("fskybox.vert", "fskybox.frag");
     }
 
-    void ImGuiUpdate()
+    static void RenderStaticDestroy()
     {
-        if (ImGui::BeginMainMenuBar())
-        {
-            if (ImGui::BeginMenu("File"))
-            {
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Edit"))
-            {
-                if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
-                if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {}  // Disabled item
-                ImGui::Separator();
-                if (ImGui::MenuItem("Cut", "CTRL+X")) {}
-                if (ImGui::MenuItem("Copy", "CTRL+C")) {}
-                if (ImGui::MenuItem("Paste", "CTRL+V")) {}
-                ImGui::EndMenu();
-            }
-            ImGui::EndMainMenuBar();
-        }
-
-        ImGui::Begin("Primitives");
-        ImGui::Text("Current selection:");
-        if (SelectedEntity)
-            ImGui::Text("%s", SelectedEntity->GetTypeNameInString());
-        else
-            ImGui::Text("<None>");
-        ImGui::Text("You can add primitives with this panel");
-        if (ImGui::Button("Box"))
-        {
-            auto* box = new FBoxPrimitive();
-            box->RenderInit(renderWorld);
-            EntityVector.push_back(box);
-            RenderComponentListHead.Insert(box);
-        }
-        if (ImGui::Button("Point"))
-        {
-            auto* point = new FPointPrimitive();
-            point->RenderInit(renderWorld);
-            EntityVector.push_back(point);
-            RenderComponentListHead.Insert(point);
-        }
-        ImGui::Button("Bezier Control Point");
-        ImGui::End();
+        glDeleteBuffers(2, Buffers);
+        glDeleteVertexArrays(1, VertexArrays);
+        delete ShaderSkybox;
     }
 
-    void Render()
+    void PrepareSkybox()
     {
-        glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LEQUAL);
+        // Cubemapping
+        RImage* cubemaps[6];
+        cubemaps[0] = new RImage("sunset_posx.png");
+        cubemaps[1] = new RImage("sunset_negx.png");
+        cubemaps[2] = new RImage("sunset_posy.png");
+        cubemaps[3] = new RImage("sunset_negy.png");
+        cubemaps[4] = new RImage("sunset_posz.png");
+        cubemaps[5] = new RImage("sunset_negz.png");
 
-        auto* item = RenderComponentListHead.NextRenderComponent;
-        while (item)
+        int texWidth = cubemaps[0]->GetWidth();
+        int texHeight = cubemaps[0]->GetHeight();
+
+        glGenTextures(1, &CubemapTex);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, CubemapTex);
+        for (int i = 0; i < 6; i++)
         {
-            item->Render();
-            item = item->NextRenderComponent;
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_RGB, texWidth, texHeight, 0,
+                         GL_RGB, GL_UNSIGNED_BYTE, cubemaps[i]->GetData());
+            delete cubemaps[i];
         }
-
-        glDisable(GL_DEPTH_TEST);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        if (TranslateGizmo)
-            TranslateGizmo->Render();
-
-        if (PointTranslateGizmo)
-            PointTranslateGizmo->Render();
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
     }
 
-    void RenderDestroy()
+    void DrawSkybox(const Matrix4& mvpMatrix)
     {
-        RemoveGizmos();
+        ShaderSkybox->Enable();
 
-        auto* item = RenderComponentListHead.NextRenderComponent;
-        while (item)
-        {
-            item->RenderDestroy();
-            item = item->NextRenderComponent;
-        }
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, CubemapTex);
+
+        ShaderSkybox->SetUniform1i("uCubemap", 0);
+        ShaderSkybox->SetUniformMatrix4fv("uModelViewProjectionMatrix", mvpMatrix.Data(), 1, true);
+
+        glBindVertexArray(VertexArrays[0]);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Buffers[1]);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
+    }
+
+    void DeleteSkybox()
+    {
+        glDeleteTextures(1, &CubemapTex);
     }
 
 private:
-    bool bWireframe;
-    vector<FBaseEntity*> EntityVector;
-    FDummyRenderComponent RenderComponentListHead;
-
-    FBaseEntity* SelectedEntity;
-    FBaseEntity* NewSelectedEntity;
-
-    FTranslateGizmo* TranslateGizmo;
-    FTranslateGizmoInputHandler* TranslateGizmoInputHandler;
-    FPointTranslateGizmo* PointTranslateGizmo;
-    FPointTranslateGizmoInputHandler* PointTranslateGizmoInputHandler;
+    static FGLSLProgram* ShaderSkybox;
+    static GLuint Buffers[2], VertexArrays[1];
+    GLuint CubemapTex = 0;
 };
+
+FGLSLProgram* FSkyboxRenderData::ShaderSkybox = nullptr;
+GLuint FSkyboxRenderData::Buffers[2];
+GLuint FSkyboxRenderData::VertexArrays[1];
+
+class FSkyboxRenderComponent : public IRenderComponent, public FSkyboxRenderData
+{
+public:
+    void RenderInit(FViewPort* rw) override
+    {
+        ViewPort = rw;
+        PrepareSkybox();
+    }
+
+    void Render() override
+    {
+        float zFar = ViewPort->GetCamera()->GetCamera().GetZFar();
+        zFar /= 1.8f; //A bit over sqrt(3)
+        Matrix3x4 enlargeSkybox = Matrix3x4(Vector3::ZERO, Quaternion::IDENTITY, Vector3(zFar, zFar, zFar));
+        Matrix4 viewMat = ViewPort->GetViewMatrix();
+        viewMat.SetTranslation(Vector3::ZERO);
+        Matrix4 mvp = ViewPort->GetProjectionMatrix() * viewMat * enlargeSkybox;
+        DrawSkybox(mvp);
+    }
+
+    void RenderDestroy() override
+    {
+        DeleteSkybox();
+    }
+
+private:
+    FViewPort* ViewPort;
+};
+
+FSkyboxRenderComponent* testSkybox;
 
 void myGlSetup()
 {
@@ -1417,15 +1331,19 @@ void myGlSetup()
     cameraInputHandler = new FCameraInputHandler(cameraWithPivot);
     metaInputHandler->Insert(cameraInputHandler);
 
-    renderWorld = new FRenderWorld(cameraWithPivot);
+    renderWorld = new FViewPort(cameraWithPivot);
     cameraWithPivot->GetCameraTransform().Translate(0, 3, 6.18);
     cameraWithPivot->GetCameraTransform().LookAt(Vector3::ZERO);
     cameraWithPivot->GetCamera().SetAspectRatio((float)1600/(float)900);
 
-    FRayVisualizer::RenderStaticInit();
+    FRayDisplay::RenderStaticInit();
+    FSkyboxRenderComponent::RenderStaticInit();
 
     mainGrid = new FGrid();
     mainGrid->RenderInit(renderWorld);
+
+    testSkybox = new FSkyboxRenderComponent();
+    testSkybox->RenderInit(renderWorld);
 
     vg = nvgCreateGL3(NVG_ANTIALIAS | NVG_STENCIL_STROKES | NVG_DEBUG);
 
@@ -1444,9 +1362,10 @@ void myGlSetup()
     io.Fonts->AddFontDefault();
 }
 
-void myGlRender(SDL_Window* window)
+//Update and render, returns true if quitting
+bool myUpdateAndRender(SDL_Window* window)
 {
-    glClearColor(0, 0, 0, 1);
+    glClearColor(0, 0, 0, 0);
     glClearDepth(1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -1458,10 +1377,8 @@ void myGlRender(SDL_Window* window)
     else
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    if (rayVisualizer)
-        rayVisualizer->Render();
+    testSkybox->Render();
 
-    //testPointPrimitive->Render();
     mainGrid->Render();
 
     editorMaster->Render();
@@ -1508,6 +1425,8 @@ void myGlRender(SDL_Window* window)
     editorMaster->ImGuiUpdate();
 
     ImGui::Render();
+
+    return editorMaster->IsQuitting();
 }
 
 void myGlCleanup()
@@ -1515,29 +1434,20 @@ void myGlCleanup()
     editorMaster->RenderDestroy();
     ImGui_ImplSdlGL3_Shutdown();
     nvgDeleteGL3(vg);
-    if (rayVisualizer)
-        rayVisualizer->RenderDestroy();
-    delete rayVisualizer;
-    //testPointPrimitive->RenderDestroy();
     mainGrid->RenderDestroy();
-    //translateGizmo->RenderDestroy();
-    //delete translateGizmo;
+    testSkybox->RenderDestroy();
+    delete testSkybox;
 
-    //pointTranslateGizmo->RenderDestroy();
-    //delete pointTranslateGizmo;
-    //delete pointTranslateGizmoInputHandler;
-
-    //delete testPointPrimitive;
     delete mainGrid;
     delete renderWorld;
     delete cameraWithPivot;
     delete cameraInputHandler;
-    //delete translateGizmoInputHandler;
     delete editorMaster;
     delete metaInputHandler;
 
-    FRayVisualizer::RenderStaticDestroy();
-    //testPointPrimitive->RenderStaticDestroy();
+    FRayDisplay::RenderStaticDestroy();
+    FPointPrimitive::RenderStaticDestroy();
+    FSkyboxRenderComponent::RenderStaticDestroy();
 }
 
 int main()
@@ -1584,7 +1494,7 @@ int main()
             else if (e.type == SDL_MOUSEWHEEL)
                 metaInputHandler->MouseWheelRolled(ConvertMouseWheelEvent(e.wheel));
         }
-        myGlRender(window);
+        quit = myUpdateAndRender(window) || quit;
         SDL_GL_SwapWindow(window);
     }
 
