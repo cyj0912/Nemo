@@ -62,7 +62,7 @@ bool FRayVisualizer::MousePressed(const FMouseButtonEvent& evt)
 
     if (evt.button == EMouseButton::Left)
     {
-        auto ray = EditorMaster->GetViewPort()->GetCamera()->GetRayTo(evt.x, evt.y);
+        auto ray = EditorMaster->GetViewPort()->GetRayTo(evt.x, evt.y);
         auto rayDisp = new FRayDisplay(ray);
         rayDisp->RenderInit(EditorMaster->GetViewPort());
         RayDisplayVector.push_back(rayDisp);
@@ -74,14 +74,6 @@ void FRayVisualizer::ImGuiUpdate()
 {
     if (ImGui::TreeNode("Ray Visualizer"))
     {
-        if (!RayDisplayVector.empty())
-        {
-            auto* lastRay = RayDisplayVector[RayDisplayVector.size() - 1];
-            const Ray& ray = lastRay->GetRay();
-            ImGui::Text("Last Ray");
-            ImGui::Text("\tOrigin: <%s>", ray.Origin.ToString().c_str());
-            ImGui::Text("\tDirection: <%s>",  ray.Direction.ToString().c_str());
-        }
         ImGui::Text("Total Rays: %d", (int)RayDisplayVector.size());
         ImGui::Checkbox("Enabled", &bIsEnabled);
         if (ImGui::Button("Remove All Rays"))
@@ -90,6 +82,14 @@ void FRayVisualizer::ImGuiUpdate()
             for (auto* ray : RayDisplayVector)
                 delete ray;
             RayDisplayVector.clear();
+        }
+        if (!RayDisplayVector.empty())
+        {
+            auto* lastRay = RayDisplayVector[RayDisplayVector.size() - 1];
+            const Ray& ray = lastRay->GetRay();
+            ImGui::Text("Last Ray");
+            ImGui::Text("\tOrigin: <%s>", ray.Origin.ToString().c_str());
+            ImGui::Text("\tDirection: <%s>",  ray.Direction.ToString().c_str());
         }
         ImGui::TreePop();
     }

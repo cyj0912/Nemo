@@ -49,31 +49,15 @@ public:
     {
         return GetProjectionMatrix() * GetViewMatrix();
     }
-
-    //TODO: Very very hackish. Rethink the viewport hierarchy
-    Ray GetRayTo(int screenX, int screenY)
-    {
-        //TODO: No hard coded screen size
-        const int width = 1600;
-        const int height = 900;
-        auto cameraPos = CameraTransform.GetWorldTranslation();
-        auto vpMatrix = GetViewProjectionMatrix();
-        auto ndcToWorld = vpMatrix.Inverse();
-        float ndcX = (float)screenX / (float)width * 2.0f - 1.0f;
-        float ndcY = 1.0f - 2.0f * (float)screenY / (float)height;
-        //Vector4 worldNear = ndcToWorld * Vector4(ndcX, ndcY, -1.0f, 1.0f);
-        //Vector3 near(worldNear[0] / worldNear[3], worldNear[1] / worldNear[3], worldNear[2] / worldNear[3]);
-        Vector4 worldMiddle = ndcToWorld * Vector4(ndcX, ndcY, 0.0f, 1.0f);
-        Vector3 middle(worldMiddle[0] / worldMiddle[3], worldMiddle[1] / worldMiddle[3], worldMiddle[2] / worldMiddle[3]);
-        return Ray(cameraPos, middle - cameraPos);
-    }
 };
 
 class FViewPort
 {
-    FCameraWithPivot* Camera;
 public:
-    explicit FViewPort(FCameraWithPivot* c) : Camera(c) {}
+    explicit FViewPort(FCameraWithPivot* c, int w, int h) : Camera(c), Width(w), Height(h)
+    {
+        c->GetCamera().SetAspectRatio((float)Width / (float)Height);
+    }
 
     FCameraWithPivot* GetCamera() const
     {
@@ -94,6 +78,22 @@ public:
     {
         return Camera->GetViewProjectionMatrix();
     }
+
+    Ray GetRayTo(int screenX, int screenY)
+    {
+        auto cameraPos = GetCamera()->GetCameraTransform().GetWorldTranslation();
+        auto vpMatrix = GetViewProjectionMatrix();
+        auto ndcToWorld = vpMatrix.Inverse();
+        float ndcX = (float)screenX / (float)Width * 2.0f - 1.0f;
+        float ndcY = 1.0f - 2.0f * (float)screenY / (float)Height;
+        Vector4 worldMiddle = ndcToWorld * Vector4(ndcX, ndcY, 0.0f, 1.0f);
+        Vector3 middle(worldMiddle[0] / worldMiddle[3], worldMiddle[1] / worldMiddle[3], worldMiddle[2] / worldMiddle[3]);
+        return Ray(cameraPos, middle - cameraPos);
+    }
+
+private:
+    FCameraWithPivot* Camera;
+    int Width, Height;
 };
 
 class IRenderComponent

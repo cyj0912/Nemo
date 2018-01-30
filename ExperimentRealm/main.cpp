@@ -712,8 +712,8 @@ private:
 class FTranslateGizmoInputHandler : public IInputHandler
 {
 public:
-    FTranslateGizmoInputHandler(FTranslateGizmo* gizmo, FCameraWithPivot* camera)
-            : Gizmo(gizmo), CurrentCamera(camera), DragAlongAxis(EAxis::None), bDraggingAlong(false)
+    FTranslateGizmoInputHandler(FTranslateGizmo* gizmo, FViewPort* vp)
+            : Gizmo(gizmo), ViewPort(vp), DragAlongAxis(EAxis::None), bDraggingAlong(false)
     {
     }
 
@@ -722,7 +722,7 @@ public:
         if (bDraggingAlong)
         {
             Gizmo->SetHighlightAxis(DragAlongAxis);
-            auto worldRay = CurrentCamera->GetRayTo(evt.x, evt.y);
+            auto worldRay = ViewPort->GetRayTo(evt.x, evt.y);
 
             Vector3 closestPoint = DragAlongRay.ClosestPoint(worldRay);
             Vector3 offset = closestPoint - LastClosestPoint;
@@ -746,7 +746,7 @@ public:
             LastClosestPoint = closestPoint;
             return true;
         }
-        auto worldRay = CurrentCamera->GetRayTo(evt.x, evt.y);
+        auto worldRay = ViewPort->GetRayTo(evt.x, evt.y);
         auto hit = Gizmo->HitWorldSpaceRay(worldRay);
         Gizmo->SetHighlightAxis(hit);
         return false;
@@ -756,7 +756,7 @@ public:
     {
         if (evt.button == SDL_BUTTON_LEFT)
         {
-            auto ray = CurrentCamera->GetRayTo(evt.x, evt.y);
+            auto ray = ViewPort->GetRayTo(evt.x, evt.y);
             auto hit = Gizmo->HitWorldSpaceRay(ray);
             if (hit != EAxis::None)
             {
@@ -779,7 +779,7 @@ public:
 
 private:
     FTranslateGizmo* Gizmo;
-    FCameraWithPivot* CurrentCamera;
+    FViewPort* ViewPort;
 
     Ray DragAlongRay;
     EAxis DragAlongAxis;
@@ -790,8 +790,8 @@ private:
 class FPointTranslateGizmoInputHandler : public IInputHandler
 {
 public:
-    FPointTranslateGizmoInputHandler(FPointTranslateGizmo* gizmo, FCameraWithPivot* camera)
-            : Gizmo(gizmo), CurrentCamera(camera), DragAlongAxis(EAxis::None), bDraggingAlong(false)
+    FPointTranslateGizmoInputHandler(FPointTranslateGizmo* gizmo, FViewPort* vp)
+            : Gizmo(gizmo), ViewPort(vp), DragAlongAxis(EAxis::None), bDraggingAlong(false)
     {
     }
 
@@ -800,7 +800,7 @@ public:
         if (bDraggingAlong)
         {
             Gizmo->SetHighlightAxis(DragAlongAxis);
-            auto worldRay = CurrentCamera->GetRayTo(evt.x, evt.y);
+            auto worldRay = ViewPort->GetRayTo(evt.x, evt.y);
 
             Vector3 closestPoint = DragAlongRay.ClosestPoint(worldRay);
             Vector3 offset = closestPoint - LastClosestPoint;
@@ -811,7 +811,7 @@ public:
             LastClosestPoint = closestPoint;
             return true;
         }
-        auto worldRay = CurrentCamera->GetRayTo(evt.x, evt.y);
+        auto worldRay = ViewPort->GetRayTo(evt.x, evt.y);
         auto hit = Gizmo->HitWorldSpaceRay(worldRay);
         Gizmo->SetHighlightAxis(hit);
         return false;
@@ -821,7 +821,7 @@ public:
     {
         if (evt.button == SDL_BUTTON_LEFT)
         {
-            auto ray = CurrentCamera->GetRayTo(evt.x, evt.y);
+            auto ray = ViewPort->GetRayTo(evt.x, evt.y);
             auto hit = Gizmo->HitWorldSpaceRay(ray);
             if (hit != EAxis::None)
             {
@@ -844,7 +844,7 @@ public:
 
 private:
     FPointTranslateGizmo* Gizmo;
-    FCameraWithPivot* CurrentCamera;
+    FViewPort* ViewPort;
 
     Ray DragAlongRay;
     EAxis DragAlongAxis;
@@ -978,7 +978,7 @@ bool FEditorMaster::MousePressed(const FMouseButtonEvent& evt)
 
     if (evt.button == SDL_BUTTON_LEFT)
     {
-        auto worldRay = cameraWithPivot->GetRayTo(evt.x, evt.y);
+        auto worldRay = GetViewPort()->GetRayTo(evt.x, evt.y);
 
         //The closer entity wins if contested
         FBaseEntity* NewSelectedEntity = nullptr;
@@ -1028,7 +1028,7 @@ void FEditorMaster::CreateGizmoFor(FBaseEntity* entity)
         auto* box = dynamic_cast<FBoxPrimitive*>(entity);
         TranslateGizmo = new FTranslateGizmo(&box->GetTransformNode());
         TranslateGizmo->RenderInit(renderWorld);
-        TranslateGizmoInputHandler = new FTranslateGizmoInputHandler(TranslateGizmo, cameraWithPivot);
+        TranslateGizmoInputHandler = new FTranslateGizmoInputHandler(TranslateGizmo, GetViewPort());
         metaInputHandler->InsertFront(TranslateGizmoInputHandler);
     }
     else if (dynamic_cast<FPointPrimitive*>(entity))
@@ -1036,7 +1036,7 @@ void FEditorMaster::CreateGizmoFor(FBaseEntity* entity)
         auto* point = dynamic_cast<FPointPrimitive*>(entity);
         PointTranslateGizmo = new FPointTranslateGizmo(&point->GetPosition());
         PointTranslateGizmo->RenderInit(renderWorld);
-        PointTranslateGizmoInputHandler = new FPointTranslateGizmoInputHandler(PointTranslateGizmo, cameraWithPivot);
+        PointTranslateGizmoInputHandler = new FPointTranslateGizmoInputHandler(PointTranslateGizmo, GetViewPort());
         metaInputHandler->InsertFront(PointTranslateGizmoInputHandler);
     }
 }
@@ -1347,10 +1347,9 @@ void myGlSetup()
     cameraInputHandler = new FCameraInputHandler(cameraWithPivot);
     metaInputHandler->Insert(cameraInputHandler);
 
-    renderWorld = new FViewPort(cameraWithPivot);
+    renderWorld = new FViewPort(cameraWithPivot, 1600, 900);
     cameraWithPivot->GetCameraTransform().Translate(0, 3, 6.18);
     cameraWithPivot->GetCameraTransform().LookAt(Vector3::ZERO);
-    cameraWithPivot->GetCamera().SetAspectRatio((float)1600/(float)900);
 
     FRayDisplay::RenderStaticInit();
     FSkyboxRenderComponent::RenderStaticInit();
