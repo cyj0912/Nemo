@@ -1,5 +1,6 @@
 #include "RayVisualize.h"
 #include "EditorMaster.h"
+#include "imgui/imgui.h"
 
 namespace tc
 {
@@ -56,11 +57,54 @@ FGLSLProgram* FRayRenderComponentStaticData::Shader;
 
 bool FRayVisualizer::MousePressed(const FMouseButtonEvent& evt)
 {
-    //auto ray = CurrentCamera->GetRayTo(evt.x, evt.y);
-    //auto rayVisualizer = new FRayVisualizer(ray);
-    //rayVisualizer->RenderInit(renderWorld);
+    if (!bIsEnabled)
+        return false;
 
-    return IInputHandler::MousePressed(evt);
+    if (evt.button == EMouseButton::Left)
+    {
+        auto ray = EditorMaster->GetViewPort()->GetCamera()->GetRayTo(evt.x, evt.y);
+        auto rayDisp = new FRayDisplay(ray);
+        rayDisp->RenderInit(EditorMaster->GetViewPort());
+        RayDisplayVector.push_back(rayDisp);
+    }
+    return false;
+}
+
+void FRayVisualizer::ImGuiUpdate()
+{
+    if (ImGui::TreeNode("Ray Visualizer"))
+    {
+        if (!RayDisplayVector.empty())
+        {
+            auto* lastRay = RayDisplayVector[RayDisplayVector.size() - 1];
+            const Ray& ray = lastRay->GetRay();
+            ImGui::Text("Last Ray");
+            ImGui::Text("\tOrigin: <%s>", ray.Origin.ToString().c_str());
+            ImGui::Text("\tDirection: <%s>",  ray.Direction.ToString().c_str());
+        }
+        ImGui::Text("Total Rays: %d", (int)RayDisplayVector.size());
+        ImGui::Checkbox("Enabled", &bIsEnabled);
+        if (ImGui::Button("Remove All Rays"))
+        {
+            RenderDestroy();
+            for (auto* ray : RayDisplayVector)
+                delete ray;
+            RayDisplayVector.clear();
+        }
+        ImGui::TreePop();
+    }
+}
+
+void FRayVisualizer::Render()
+{
+    for (auto* ray : RayDisplayVector)
+        ray->Render();
+}
+
+void FRayVisualizer::RenderDestroy()
+{
+    for (auto* ray : RayDisplayVector)
+        ray->RenderDestroy();
 }
 
 } /* namespace tc */

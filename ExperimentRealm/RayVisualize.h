@@ -6,6 +6,8 @@
 namespace tc
 {
 
+class FEditorMaster;
+
 class FRayRenderComponentStaticData
 {
 public:
@@ -85,10 +87,20 @@ private:
 class FRayVisualizer : public IInputHandler
 {
 public:
+    explicit FRayVisualizer(FEditorMaster* EditorMaster) : EditorMaster(EditorMaster) {}
+
     bool MousePressed(const FMouseButtonEvent& evt) override;
 
+    void ImGuiUpdate();
+
+    void Render();
+
+    void RenderDestroy();
+
 private:
+    FEditorMaster* EditorMaster;
     vector<FRayDisplay*> RayDisplayVector;
+    bool bIsEnabled;
 };
 
 } /* namespace tc */

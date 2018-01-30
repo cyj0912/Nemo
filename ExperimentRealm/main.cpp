@@ -213,12 +213,17 @@ public:
     {
         Matrix4 modelMatrix = static_cast<TOwner*>(this)->GetTransformMatrix().ToMatrix4();
         Matrix4 mvp = RenderWorld->GetProjectionMatrix() * RenderWorld->GetViewMatrix() * modelMatrix;
-        Matrix3 normalTransform = RenderWorld->GetViewMatrix().ToMatrix3() * modelMatrix.ToMatrix3();
+        Matrix3 viewNoTranslate = RenderWorld->GetViewMatrix().ToMatrix3();
+        Matrix3 normalTransform = viewNoTranslate * modelMatrix.ToMatrix3();
         normalTransform = normalTransform.Inverse();
         normalTransform = normalTransform.Transpose();
+
+        Vector3 eyeDirLight = viewNoTranslate * Vector3(-0.90f, 0.04f, 0.43f);
+
         Shader->Enable();
         Shader->SetUniformMatrix4fv("uModelViewProjectionMatrix", mvp.Data(), 1, true);
         Shader->SetUniformMatrix3fv("uNormalTransform", normalTransform.Data(), 1, true);
+        Shader->SetUniform3f("uEyeDirLight", eyeDirLight.x_, eyeDirLight.y_, eyeDirLight.z_);
 
         glBindVertexArray(VertexArrays[0]);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Buffers[1]);
@@ -940,12 +945,14 @@ FEditorMaster::FEditorMaster() : bWireframe(false), SelectedEntity(nullptr),Tran
                   TranslateGizmoInputHandler(nullptr), PointTranslateGizmo(nullptr),
                   PointTranslateGizmoInputHandler(nullptr), bToQuit(false)
 {
+    RayVisualizer = new FRayVisualizer(this);
 }
 
 FEditorMaster::~FEditorMaster()
 {
     for (auto* entity : EntityVector)
         delete entity;
+    delete RayVisualizer;
 }
 
 
@@ -966,6 +973,9 @@ bool FEditorMaster::KeyReleased(const FKeyboardEvent& evt)
 
 bool FEditorMaster::MousePressed(const FMouseButtonEvent& evt)
 {
+    if (RayVisualizer->MousePressed(evt))
+        return true;
+
     if (evt.button == SDL_BUTTON_LEFT)
     {
         auto worldRay = cameraWithPivot->GetRayTo(evt.x, evt.y);
@@ -1106,6 +1116,8 @@ void FEditorMaster::ImGuiUpdate()
     }
     ImGui::Button("Bezier Control Point");
     ImGui::End();
+
+    RayVisualizer->ImGuiUpdate();
 }
 
 void FEditorMaster::Render()
@@ -1119,6 +1131,8 @@ void FEditorMaster::Render()
         item->Render();
         item = item->NextRenderComponent;
     }
+
+    RayVisualizer->Render();
 
     glDisable(GL_DEPTH_TEST);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -1140,6 +1154,8 @@ void FEditorMaster::RenderDestroy()
         item->RenderDestroy();
         item = item->NextRenderComponent;
     }
+
+    RayVisualizer->RenderDestroy();
 }
 
 bool FEditorMaster::IsQuitting() const

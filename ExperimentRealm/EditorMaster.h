@@ -8,6 +8,7 @@ class FTranslateGizmoInputHandler;
 class FPointTranslateGizmo;
 class FPointTranslateGizmoInputHandler;
 class FBaseEntity;
+class FRayVisualizer;
 
 class FEditorMaster : public IInputHandler
 {
@@ -55,6 +56,8 @@ private:
     FPointTranslateGizmoInputHandler* PointTranslateGizmoInputHandler;
 
     bool bToQuit;
+
+    FRayVisualizer* RayVisualizer;
 };
 
 } /* namespace tc */

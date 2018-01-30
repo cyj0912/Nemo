@@ -52,13 +52,25 @@ struct FMouseMotionEvent
     int32_t yrel;
 };
 
+enum class EMouseButton : uint8_t
+{
+    Left = 1,
+    Middle = 2,
+    Right = 3,
+    X1 = 4,
+    X2 = 5
+};
+
+inline bool operator==(const EMouseButton& lhs, int rhs){ return static_cast<std::underlying_type<EMouseButton>::type>(lhs) == rhs; }
+inline bool operator!=(const EMouseButton& lhs, int rhs){ return !(lhs == rhs); }
+
 struct FMouseButtonEvent
 {
     uint32_t type;
     uint32_t timestamp;
     uint32_t windowID;
     uint32_t which;
-    uint8_t button;
+    EMouseButton button;
     uint8_t state;
     uint8_t clicks;
     uint8_t padding1;
