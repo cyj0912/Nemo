@@ -9,6 +9,7 @@
 #include "EntityManager.h"
 #include "Gizmo.h"
 #include "BezierCurve.h"
+#include "InteractionSystem.h"
 
 #include <SDL.h>
 #include <ResourceManager.h>
@@ -354,21 +355,28 @@ FEditorMaster::FEditorMaster() : bWireframe(false), SelectedEntity(nullptr),Tran
                   TranslateGizmoInputHandler(nullptr), PointTranslateGizmo(nullptr),
                   PointTranslateGizmoInputHandler(nullptr), bToQuit(false)
 {
+    MainInputHandler = new FMulticastInputHandler();
     EntityManager = new FEntityManager();
     RayVisualizer = new FRayVisualizer(this);
     PrimitiveRenderer = new FPrimitiveRenderer();
+    InteractionSystem = new FInteractionSystem(EntityManager);
+    InteractionSystem->SetEditorMaster(this);
+    MainInputHandler->Insert(InteractionSystem);
 }
 
 FEditorMaster::~FEditorMaster()
 {
-    delete RayVisualizer;
+    delete InteractionSystem;
     delete PrimitiveRenderer;
+    delete RayVisualizer;
     delete EntityManager;
+    delete MainInputHandler;
 }
 
 
 bool FEditorMaster::KeyPressed(const FKeyboardEvent& evt)
 {
+    MainInputHandler->KeyPressed(evt);
     if (evt.keysym.sym == EKeyCode::Z)
     {
         ToggleWireframe();
@@ -379,15 +387,18 @@ bool FEditorMaster::KeyPressed(const FKeyboardEvent& evt)
 
 bool FEditorMaster::KeyReleased(const FKeyboardEvent& evt)
 {
+    MainInputHandler->KeyReleased(evt);
     return false;
 }
 
 bool FEditorMaster::MousePressed(const FMouseButtonEvent& evt)
 {
-    if (RayVisualizer->MousePressed(evt))
+    RayVisualizer->MousePressed(evt);
+
+    if (MainInputHandler->MousePressed(evt))
         return true;
 
-    if (evt.button == SDL_BUTTON_LEFT)
+    if (evt.button == EMouseButton::Left)
     {
         auto worldRay = GetViewPort()->GetRayTo(evt.x, evt.y);
 
@@ -436,7 +447,7 @@ void FEditorMaster::CreateGizmoFor(FBaseEntity* entity)
         TranslateGizmo = new FTranslateGizmo(&box->GetTransformNode());
         TranslateGizmo->RenderInit(renderWorld);
         TranslateGizmoInputHandler = new FTranslateGizmoInputHandler(TranslateGizmo, GetViewPort());
-        metaInputHandler->InsertFront(TranslateGizmoInputHandler);
+        MainInputHandler->Insert(TranslateGizmoInputHandler);
     }
     else if (dynamic_cast<FPointPrimitive*>(entity))
     {
@@ -444,7 +455,7 @@ void FEditorMaster::CreateGizmoFor(FBaseEntity* entity)
         PointTranslateGizmo = new FPointTranslateGizmo(&point->GetPosition());
         PointTranslateGizmo->RenderInit(renderWorld);
         PointTranslateGizmoInputHandler = new FPointTranslateGizmoInputHandler(PointTranslateGizmo, GetViewPort());
-        metaInputHandler->InsertFront(PointTranslateGizmoInputHandler);
+        MainInputHandler->Insert(PointTranslateGizmoInputHandler);
     }
 }
 
@@ -510,27 +521,22 @@ void FEditorMaster::ImGuiUpdate()
     if (ImGui::Button("Box"))
     {
         auto* box = new FBoxPrimitive();
-        box->RenderInit(renderWorld);
-        EntityManager->RegisterEntity(box);
-        RenderComponentListHead.Insert(box);
+        RegisterEntity(box);
     }
     if (ImGui::Button("Point"))
     {
         auto* point = new FPointPrimitive();
-        point->RenderInit(renderWorld);
-        EntityManager->RegisterEntity(point);
-        RenderComponentListHead.Insert(point);
+        RegisterEntity(point);
     }
     if (ImGui::Button("Bezier Control Point"))
     {
         auto* primitive = new FBezierCurveControlPointPrimitive();
-        primitive->RenderInit(renderWorld);
-        EntityManager->RegisterEntity(primitive);
-        RenderComponentListHead.Insert(primitive);
+        RegisterEntity(primitive);
     }
     ImGui::End();
 
     RayVisualizer->ImGuiUpdate();
+    InteractionSystem->ImGuiUpdate();
 }
 
 void FEditorMaster::RenderInit()
@@ -602,6 +608,14 @@ void FEditorMaster::InsertRenderAndInit(IRenderComponent* comp)
 {
     comp->RenderInit(GetViewPort());
     RenderComponentListHead.Insert(comp);
+}
+
+void FEditorMaster::RegisterEntity(FBaseEntity* entity)
+{
+    EntityManager->RegisterEntity(entity);
+    auto* renderComp = dynamic_cast<IRenderComponent*>(entity);
+    if (renderComp)
+        InsertRenderAndInit(renderComp);
 }
 
 }
@@ -785,6 +799,7 @@ void myGlSetup()
     FRayDisplay::RenderStaticInit();
     FSkyboxRenderComponent::RenderStaticInit();
     FPrimitiveRenderer::RenderStaticInit();
+    FBezierCurveRenderComponentStaticData::RenderStaticInit();
 
     mainGrid = new FGrid();
     mainGrid->RenderInit(renderWorld);
@@ -897,6 +912,7 @@ void myGlCleanup()
     FRayDisplay::RenderStaticDestroy();
     FSkyboxRenderComponent::RenderStaticDestroy();
     FPrimitiveRenderer::RenderStaticDestroy();
+    FBezierCurveRenderComponentStaticData::RenderStaticDestroy();
 }
 
 int main()
@@ -928,19 +944,20 @@ int main()
         while (SDL_PollEvent(&e))
         {
             ImGui_ImplSdlGL3_ProcessEvent(&e);
+            ImGuiIO& io = ImGui::GetIO();
             if (e.type == SDL_QUIT)
                 quit = true;
-            else if (e.type == SDL_KEYDOWN)
+            else if (e.type == SDL_KEYDOWN && !io.WantCaptureKeyboard)
                 metaInputHandler->KeyPressed(ConvertKeyboardEvent(e.key));
-            else if (e.type == SDL_KEYUP)
+            else if (e.type == SDL_KEYUP && !io.WantCaptureKeyboard)
                 metaInputHandler->KeyReleased(ConvertKeyboardEvent(e.key));
-            else if (e.type == SDL_MOUSEMOTION)
+            else if (e.type == SDL_MOUSEMOTION && !io.WantCaptureMouse)
                 metaInputHandler->MouseMoved(ConvertMouseMotionEvent(e.motion));
-            else if (e.type == SDL_MOUSEBUTTONDOWN)
+            else if (e.type == SDL_MOUSEBUTTONDOWN && !io.WantCaptureMouse)
                 metaInputHandler->MousePressed(ConvertMouseButtonEvent(e.button));
-            else if (e.type == SDL_MOUSEBUTTONUP)
+            else if (e.type == SDL_MOUSEBUTTONUP && !io.WantCaptureMouse)
                 metaInputHandler->MouseReleased(ConvertMouseButtonEvent(e.button));
-            else if (e.type == SDL_MOUSEWHEEL)
+            else if (e.type == SDL_MOUSEWHEEL && !io.WantCaptureMouse)
                 metaInputHandler->MouseWheelRolled(ConvertMouseWheelEvent(e.wheel));
         }
         quit = myUpdateAndRender(window) || quit;

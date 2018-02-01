@@ -11,7 +11,7 @@ class FEntityManager
 public:
     ~FEntityManager();
 
-    void RegisterEntity(FBaseEntity* entity);
+    void RegisterEntity(FBaseEntity* entity, bool bIsSub = false);
 
     template <typename T> set<T*> GetComponents()
     {
@@ -48,6 +48,7 @@ public:
 
 private:
     set<FBaseEntity*> Entities;
+    unordered_map<FBaseEntity*, bool> MapIsSubEntity;
 };
 
 } /* namespace tc */

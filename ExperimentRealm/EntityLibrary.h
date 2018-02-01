@@ -8,6 +8,8 @@
 namespace tc
 {
 
+class FInteractionSystem;
+
 class FBaseEntity
 {
 public:
@@ -15,6 +17,7 @@ public:
     virtual const char* GetTypeNameInString() const;
     virtual size_t CountSubEntities() const;
     virtual FBaseEntity* GetSubEntity(size_t index);
+    virtual void ImGuiUpdate(FInteractionSystem* interactionSystem);
 };
 
 class FTransformComponent
@@ -55,6 +58,16 @@ public:
     Vector3& GetPosition()
     {
         return Position;
+    }
+
+    const Vector3& GetPosition() const
+    {
+        return Position;
+    }
+
+    void SetPosition(const Vector3& v)
+    {
+        Position = v;
     }
 
 protected:

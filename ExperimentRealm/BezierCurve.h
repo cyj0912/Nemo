@@ -1,8 +1,8 @@
 #pragma once
-
 #include "RenderComponent.h"
 #include "Shader.h"
 #include "EntityLibrary.h"
+#include "InteractionSystem.h"
 
 #include "OpenGL.h"
 
@@ -11,6 +11,54 @@
 
 namespace tc
 {
+
+class FBezierCurveControlPointPrimitive : public FBaseEntity,
+                                          public IRenderComponent,
+                                          public IInteractionComponent
+{
+public:
+    FBezierCurveControlPointPrimitive();
+
+    const char* GetTypeNameInString() const override;
+
+    size_t CountSubEntities() const override;
+
+    FBaseEntity* GetSubEntity(size_t index) override;
+
+    void RenderInit(FViewPort* rw) override;
+
+    void Render() override;
+
+    void RenderDestroy() override;
+
+    Vector3 InterpolatePosition(const FBezierCurveControlPointPrimitive& rhs, float t) const;
+
+    float GetDistance(const FBezierCurveControlPointPrimitive& rhs) const;
+
+    void CreateGizmo(FInteractionSystem* system) override
+    {
+        //TODO: Do we really create gizmo?
+    }
+
+    IRayIntersectComponent* GetRayIntersectComponent() override
+    {
+        return &IntersectionTester;
+    }
+
+    void ImGuiUpdate(FInteractionSystem* interactionSystem) override;
+
+private:
+    FPointPrimitive FrontPoint;
+    FPointPrimitive MiddlePoint;
+    FPointPrimitive BackPoint;
+
+    class IntersectionTester : public IRayIntersectComponent
+    {
+    public:
+        float RayHitDistance(const Ray& ray) override;
+        FBezierCurveControlPointPrimitive* Owner;
+    } IntersectionTester;
+};
 
 class FBezierCurveRenderComponentStaticData
 {
@@ -35,58 +83,58 @@ template <typename TOwner>
 class TBezierCurveRenderComponent : public IRenderComponent, public FBezierCurveRenderComponentStaticData
 {
 public:
-    TBezierCurveRenderComponent() : ViewPort(nullptr) {}
+protected:
+};
+
+class FBezierCurve : public FBaseEntity, public TBezierCurveRenderComponent<FBezierCurve>
+{
+public:
+    FBezierCurve() : ViewPort(nullptr) {}
 
     void RenderInit(FViewPort* rw) override
     {
-        RenderStaticInit();
         ViewPort = rw;
+    }
+
+    void RenderBezierSegment(FBezierCurveControlPointPrimitive* cp0, FBezierCurveControlPointPrimitive* cp1)
+    {
+        float dist = cp0->GetDistance(*cp1);
+        int numLineSegments = (int)(dist * 4.0f);
+        float tStep = 1.0f / (float)numLineSegments;
+        for (int i = 0; i < numLineSegments; i++)
+        {
+            auto lineFrom = cp0->InterpolatePosition(*cp1, tStep * (float)i);
+            auto lineTo = cp0->InterpolatePosition(*cp1, tStep * (float)(i + 1));
+            GEditorMaster->GetPrimitiveRenderer()->DrawLine(lineFrom, lineTo, 1.0f, Color::MAGENTA);
+        }
     }
 
     void Render() override
     {
-        auto modelMatrix = static_cast<TOwner*>(this)->GetTransformMatrix();
-        Matrix4 mvp = ViewPort->GetViewProjectionMatrix() * modelMatrix;
-        Shader->Enable();
-        Shader->SetUniformMatrix4fv("uModelViewProjectionMatrix", mvp.Data(), 1, true);
-        Shader->SetUniform3f("uColor", 1.0f, 1.0f, 0.0f);
-
-        glPointSize(10.0f);
-        glBindVertexArray(VertexArrays[0]);
-        glDrawArrays(GL_POINTS, 0, 1);
-        glBindVertexArray(0);
+        size_t nSegments = ControlPoints.size() - 1;
+        for (auto i = 0; i < nSegments; i++)
+        {
+            RenderBezierSegment(ControlPoints[i], ControlPoints[i + 1]);
+        }
     }
 
     void RenderDestroy() override
     {
-        RenderStaticDestroy();
     }
 
-protected:
-    FViewPort* ViewPort;
-};
+    void AddControlPoint(FBezierCurveControlPointPrimitive* cp)
+    {
+        ControlPoints.push_back(cp);
+    }
 
-class FBezierCurveControlPointPrimitive : public FBaseEntity, public IRenderComponent
-{
-public:
-    FBezierCurveControlPointPrimitive();
-
-    const char* GetTypeNameInString() const override;
-
-    size_t CountSubEntities() const override;
-
-    FBaseEntity* GetSubEntity(size_t index) override;
-
-    void RenderInit(FViewPort* rw) override;
-
-    void Render() override;
-
-    void RenderDestroy() override;
+    void AddControlPointFront(FBezierCurveControlPointPrimitive* cp)
+    {
+        ControlPoints.push_front(cp);
+    }
 
 private:
-    FPointPrimitive FrontPoint;
-    FPointPrimitive MiddlePoint;
-    FPointPrimitive BackPoint;
+    FViewPort* ViewPort;
+    deque<FBezierCurveControlPointPrimitive*, std::allocator<FBezierCurveControlPointPrimitive*>> ControlPoints;
 };
 
 } /* namespace tc */

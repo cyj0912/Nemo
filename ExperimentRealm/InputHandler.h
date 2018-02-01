@@ -47,4 +47,24 @@ public:
     void InsertFront(IInputHandler* handler);
 };
 
+class FMulticastInputHandler : public IInputHandler
+{
+public:
+    bool KeyPressed(const FKeyboardEvent& evt) override;
+
+    bool KeyReleased(const FKeyboardEvent& evt) override;
+
+    bool MouseMoved(const FMouseMotionEvent& evt) override;
+
+    bool MousePressed(const FMouseButtonEvent& evt) override;
+
+    bool MouseReleased(const FMouseButtonEvent& evt) override;
+
+    bool MouseWheelRolled(const FMouseWheelEvent& evt) override;
+
+    void Insert(IInputHandler* handler);
+
+    void InsertFront(IInputHandler* handler);
+};
+
 } /* namespace tc */

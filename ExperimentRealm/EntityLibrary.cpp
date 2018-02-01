@@ -23,4 +23,8 @@ FBaseEntity* FBaseEntity::GetSubEntity(size_t index)
     return nullptr;
 }
 
+void FBaseEntity::ImGuiUpdate(FInteractionSystem* interactionSystem)
+{
+}
+
 } /* namespace tc */

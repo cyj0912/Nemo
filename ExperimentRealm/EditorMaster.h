@@ -13,6 +13,7 @@ class FBaseEntity;
 class FRayVisualizer;
 class FPrimitiveRenderer;
 class FEntityManager;
+class FInteractionSystem;
 
 class FEditorMaster : public IInputHandler
 {
@@ -26,6 +27,24 @@ public:
     bool KeyReleased(const FKeyboardEvent& evt) override;
 
     bool MousePressed(const FMouseButtonEvent& evt) override;
+
+    bool MouseMoved(const FMouseMotionEvent& evt) override
+    {
+        MainInputHandler->MouseMoved(evt);
+        return false;
+    }
+
+    bool MouseReleased(const FMouseButtonEvent& evt) override
+    {
+        MainInputHandler->MouseReleased(evt);
+        return IInputHandler::MouseReleased(evt);
+    }
+
+    bool MouseWheelRolled(const FMouseWheelEvent& evt) override
+    {
+        MainInputHandler->MouseWheelRolled(evt);
+        return IInputHandler::MouseWheelRolled(evt);
+    }
 
     void CreateGizmoFor(FBaseEntity* entity);
 
@@ -56,6 +75,8 @@ public:
 
     void InsertRenderAndInit(IRenderComponent* comp);
 
+    void RegisterEntity(FBaseEntity* entity);
+
 private:
     bool bWireframe;
     FDummyRenderComponent RenderComponentListHead;
@@ -74,6 +95,10 @@ private:
     FPrimitiveRenderer* PrimitiveRenderer;
 
     FEntityManager* EntityManager;
+
+    FInteractionSystem* InteractionSystem;
+
+    FMulticastInputHandler* MainInputHandler;
 };
 
 extern FEditorMaster* GEditorMaster;

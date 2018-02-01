@@ -6,8 +6,24 @@
 
 #include <Ray.h>
 
+#include "imgui/imgui.h"
+
 namespace tc
 {
+
+bool FInteractionSystem::KeyPressed(const FKeyboardEvent& evt)
+{
+    if (evt.keysym.sym == EKeyCode::Lshift || evt.keysym.sym == EKeyCode::Rshift)
+        bAllowMultiSelect = true;
+    return false;
+}
+
+bool FInteractionSystem::KeyReleased(const FKeyboardEvent& evt)
+{
+    if (evt.keysym.sym == EKeyCode::Lshift || evt.keysym.sym == EKeyCode::Rshift)
+        bAllowMultiSelect = false;
+    return false;
+}
 
 bool FInteractionSystem::MousePressed(const FMouseButtonEvent& evt)
 {
@@ -16,41 +32,53 @@ bool FInteractionSystem::MousePressed(const FMouseButtonEvent& evt)
         auto worldRay = EditorMaster->GetViewPort()->GetRayTo(evt.x, evt.y);
 
         //The closer entity wins if contested
-        FBaseEntity* NewSelectedEntity = nullptr;
-        IInteractionComponent* NewSelectedEntityIComp = nullptr;
+        FBaseEntity* hitEntity = nullptr;
+        IInteractionComponent* hitEntityIaComp = nullptr;
         float minHitDistance = M_INFINITY;
         for (auto* interactComp : EntityManager->GetComponents<IInteractionComponent>())
         {
             IRayIntersectComponent* rayTestComp = interactComp->GetRayIntersectComponent();
+            if (!rayTestComp)
+                continue;
             float distance = rayTestComp->RayHitDistance(worldRay);
             if(distance < minHitDistance)
             {
-                NewSelectedEntity = dynamic_cast<FBaseEntity*>(interactComp);
-                NewSelectedEntityIComp = interactComp;
+                hitEntity = dynamic_cast<FBaseEntity*>(interactComp);
+                hitEntityIaComp = interactComp;
                 minHitDistance = distance;
             }
         }
 
-        if (NewSelectedEntity)
+        FBaseEntity* originalSelection = SelectedEntity;
+
+        if (hitEntity)
         {
-            if (NewSelectedEntity != SelectedEntity)
+            if (bAllowMultiSelect)
             {
-                RemoveGizmos();
-                NewSelectedEntityIComp->CreateGizmo(this);
-                SelectedEntity = NewSelectedEntity;
-                return true;
+                if (!IsEntityInSelection(hitEntity))
+                {
+                    if (SelectedEntity)
+                        SelectedEntities.insert(hitEntity);
+                    else
+                        SelectedEntity = hitEntity;
+                }
             }
-
-            //Selected the original selected, nothing happens
-            return false;
+            else
+            {
+                SelectedEntity = hitEntity;
+                SelectedEntities.clear();
+            }
         }
-
-        //When the new selection is nothing
-        if (NewSelectedEntity != SelectedEntity)
+        else
         {
-            RemoveGizmos();
-            SelectedEntity = NewSelectedEntity;
+            SelectedEntity = nullptr;
+            SelectedEntities.clear();
         }
+
+        //TODO
+        //handle gizmo creation/destruction
+        //RemoveGizmos();
+        //hitEntityIaComp->CreateGizmo(this);
     }
     return false;
 }
@@ -79,6 +107,18 @@ void FInteractionSystem::RemoveGizmos()
     delete Gizmo;
     delete TGIHandler;
     delete PTGIHandler;
+}
+
+void FInteractionSystem::ImGuiUpdate()
+{
+    ImGui::Begin("Interaction");
+    ImGui::Text("Allow Multiselect: %s", bAllowMultiSelect ? "Yes" : "No");
+    ImGui::Text("Selection: %s", SelectedEntity ? SelectedEntity->GetTypeNameInString() : "None");
+    for (auto iter = SelectedEntities.begin(); iter != SelectedEntities.end(); iter++)
+        ImGui::Text("%s", (*iter)->GetTypeNameInString());
+    if (SelectedEntity)
+        SelectedEntity->ImGuiUpdate(this);
+    ImGui::End();
 }
 
 } /* namespace tc */
