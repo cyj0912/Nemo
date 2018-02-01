@@ -1,5 +1,7 @@
 #pragma once
-
+#include "RenderComponent.h"
+#include "EditorMaster.h"
+#include "PrimitiveRenderer.h"
 #include <SceneNode.h>
 #include <Ray.h>
 
@@ -11,6 +13,8 @@ class FBaseEntity
 public:
     virtual ~FBaseEntity();
     virtual const char* GetTypeNameInString() const;
+    virtual size_t CountSubentities() const;
+    virtual FBaseEntity* GetSubentity(size_t index);
 };
 
 class FTransformComponent
@@ -93,6 +97,38 @@ public:
         BoundingBox bounding = BoundingBox(-0.1f, 0.1f);
         float hitDist = localRay.HitDistance(bounding);
         return hitDist;
+    }
+};
+
+template <typename TOwner>
+class TPointRenderComponent : public IRenderComponent
+{
+public:
+    void RenderInit(FViewPort* rw) override
+    {
+    }
+
+    void Render() override
+    {
+        GEditorMaster->GetPrimitiveRenderer()->DrawPoint(static_cast<TOwner*>(this)->GetPosition()
+                , 10.0f, Color::YELLOW);
+    }
+
+    void RenderDestroy() override
+    {
+    }
+};
+
+class FPointPrimitive : public FBaseEntity,
+                        public FPositionComponent,
+                        public TPointRenderComponent<FPointPrimitive>,
+                        public TPointRayIntersectComponent<FPointPrimitive>
+{
+public:
+    const char* GetTypeNameInString() const override
+    {
+        static const char* name = "FPointPrimitive";
+        return name;
     }
 };
 

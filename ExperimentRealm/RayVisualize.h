@@ -87,7 +87,7 @@ private:
 class FRayVisualizer : public IInputHandler
 {
 public:
-    explicit FRayVisualizer(FEditorMaster* EditorMaster) : EditorMaster(EditorMaster) {}
+    explicit FRayVisualizer(FEditorMaster* EditorMaster) : EditorMaster(EditorMaster), bIsEnabled(false) {}
 
     bool MousePressed(const FMouseButtonEvent& evt) override;
 

@@ -9,7 +9,7 @@ find_package(OpenGL REQUIRED)
 file(GLOB IMGUI_HEADERS imgui/*.h)
 file(GLOB IMGUI_SOURCES imgui/*.cpp)
 
-add_executable(ExperimentRealm main.cpp Shader.cpp Shader.h ${IMGUI_HEADERS} ${IMGUI_SOURCES} EntityLibrary.cpp EntityLibrary.h InputHandler.cpp InputHandler.h InputEvent.h KeySym.h InputEventFromSDL2.h OpenGL.h BezierCurve.cpp BezierCurve.h RenderComponent.h UVSphere.cpp UVSphere.h RayVisualize.cpp RayVisualize.h EditorMaster.h)
+add_executable(ExperimentRealm main.cpp Shader.cpp Shader.h ${IMGUI_HEADERS} ${IMGUI_SOURCES} EntityLibrary.cpp EntityLibrary.h InputHandler.cpp InputHandler.h InputEvent.h KeySym.h InputEventFromSDL2.h OpenGL.h BezierCurve.cpp BezierCurve.h RenderComponent.h UVSphere.cpp UVSphere.h RayVisualize.cpp RayVisualize.h EditorMaster.h PrimitiveRenderer.cpp PrimitiveRenderer.h InteractionSystem.cpp InteractionSystem.h EntityManager.cpp EntityManager.h Gizmo.cpp Gizmo.h)
 
 target_link_libraries(ExperimentRealm PRIVATE Foundation)
 target_link_libraries(ExperimentRealm PRIVATE Math)

@@ -2,6 +2,7 @@
 
 #include "RenderComponent.h"
 #include "Shader.h"
+#include "EntityLibrary.h"
 
 #include "OpenGL.h"
 
@@ -29,12 +30,6 @@ protected:
     static GLuint VertexArrays[1];
     static FGLSLProgram* Shader;
 };
-
-int FBezierCurveRenderComponentStaticData::UserCount = 0;
-bool FBezierCurveRenderComponentStaticData::bInitialized = false;
-GLuint FBezierCurveRenderComponentStaticData::Buffers[1];
-GLuint FBezierCurveRenderComponentStaticData::VertexArrays[1];
-FGLSLProgram* FBezierCurveRenderComponentStaticData::Shader;
 
 template <typename TOwner>
 class TBezierCurveRenderComponent : public IRenderComponent, public FBezierCurveRenderComponentStaticData
@@ -69,6 +64,29 @@ public:
 
 protected:
     FViewPort* ViewPort;
+};
+
+class FBezierCurveControlPointPrimitive : public FBaseEntity, public IRenderComponent
+{
+public:
+    FBezierCurveControlPointPrimitive();
+
+    const char* GetTypeNameInString() const override;
+
+    size_t CountSubentities() const override;
+
+    FBaseEntity* GetSubentity(size_t index) override;
+
+    void RenderInit(FViewPort* rw) override;
+
+    void Render() override;
+
+    void RenderDestroy() override;
+
+private:
+    FPointPrimitive FrontPoint;
+    FPointPrimitive MiddlePoint;
+    FPointPrimitive BackPoint;
 };
 
 } /* namespace tc */

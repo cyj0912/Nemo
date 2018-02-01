@@ -1,4 +1,6 @@
 #pragma once
+#include "RenderComponent.h"
+#include "InputHandler.h"
 
 namespace tc
 {
@@ -9,6 +11,8 @@ class FPointTranslateGizmo;
 class FPointTranslateGizmoInputHandler;
 class FBaseEntity;
 class FRayVisualizer;
+class FPrimitiveRenderer;
+class FEntityManager;
 
 class FEditorMaster : public IInputHandler
 {
@@ -33,6 +37,8 @@ public:
 
     void ImGuiUpdate();
 
+    void RenderInit();
+
     void Render();
 
     void RenderDestroy();
@@ -43,9 +49,15 @@ public:
 
     FViewPort* GetViewPort() const;
 
+    FPrimitiveRenderer* GetPrimitiveRenderer() const
+    {
+        return PrimitiveRenderer;
+    }
+
+    void InsertRenderAndInit(IRenderComponent* comp);
+
 private:
     bool bWireframe;
-    vector<FBaseEntity*> EntityVector;
     FDummyRenderComponent RenderComponentListHead;
 
     FBaseEntity* SelectedEntity;
@@ -58,6 +70,12 @@ private:
     bool bToQuit;
 
     FRayVisualizer* RayVisualizer;
+
+    FPrimitiveRenderer* PrimitiveRenderer;
+
+    FEntityManager* EntityManager;
 };
+
+extern FEditorMaster* GEditorMaster;
 
 } /* namespace tc */

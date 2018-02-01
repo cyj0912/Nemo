@@ -49,4 +49,68 @@ void FBezierCurveRenderComponentStaticData::RenderStaticDestroy()
     glDeleteVertexArrays(1, VertexArrays);
 }
 
+int FBezierCurveRenderComponentStaticData::UserCount = 0;
+bool FBezierCurveRenderComponentStaticData::bInitialized = false;
+GLuint FBezierCurveRenderComponentStaticData::Buffers[1];
+GLuint FBezierCurveRenderComponentStaticData::VertexArrays[1];
+FGLSLProgram* FBezierCurveRenderComponentStaticData::Shader;
+
+FBezierCurveControlPointPrimitive::FBezierCurveControlPointPrimitive()
+{
+    FrontPoint.GetPosition() = Vector3(1.0f, 1.0f, 0.0f);
+    MiddlePoint.GetPosition() = Vector3(0.0f, 0.0f, 0.0f);
+    BackPoint.GetPosition() = Vector3(-1.0f, -1.0f, 0.0f);
+}
+
+const char* FBezierCurveControlPointPrimitive::GetTypeNameInString() const
+{
+    static const char* name = "FBezierCurveControlPointPrimitive";
+    return name;
+}
+
+size_t FBezierCurveControlPointPrimitive::CountSubentities() const
+{
+    return 3;
+}
+
+FBaseEntity* FBezierCurveControlPointPrimitive::GetSubentity(size_t index)
+{
+    assert(index < 3);
+    switch(index)
+    {
+    case 0:
+        return &BackPoint;
+    case 1:
+        return &MiddlePoint;
+    case 2:
+        return &FrontPoint;
+    default:
+        break;
+    }
+    return nullptr;
+}
+
+void FBezierCurveControlPointPrimitive::RenderInit(FViewPort* rw)
+{
+    FrontPoint.RenderInit(rw);
+    MiddlePoint.RenderInit(rw);
+    BackPoint.RenderInit(rw);
+}
+
+void FBezierCurveControlPointPrimitive::Render()
+{
+    FrontPoint.Render();
+    MiddlePoint.Render();
+    BackPoint.Render();
+    GEditorMaster->GetPrimitiveRenderer()->DrawLine(BackPoint.GetPosition(), MiddlePoint.GetPosition(), 1.0f, Color::GREEN);
+    GEditorMaster->GetPrimitiveRenderer()->DrawLine(MiddlePoint.GetPosition(), FrontPoint.GetPosition(), 1.0f, Color::RED);
+}
+
+void FBezierCurveControlPointPrimitive::RenderDestroy()
+{
+    FrontPoint.RenderDestroy();
+    MiddlePoint.RenderDestroy();
+    BackPoint.RenderDestroy();
+}
+
 } /* namespace tc */

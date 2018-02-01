@@ -72,7 +72,7 @@ bool FRayVisualizer::MousePressed(const FMouseButtonEvent& evt)
 
 void FRayVisualizer::ImGuiUpdate()
 {
-    if (ImGui::TreeNode("Ray Visualizer"))
+    if (ImGui::CollapsingHeader("Ray Visualizer"))
     {
         ImGui::Text("Total Rays: %d", (int)RayDisplayVector.size());
         ImGui::Checkbox("Enabled", &bIsEnabled);
@@ -91,7 +91,6 @@ void FRayVisualizer::ImGuiUpdate()
             ImGui::Text("\tOrigin: <%s>", ray.Origin.ToString().c_str());
             ImGui::Text("\tDirection: <%s>",  ray.Direction.ToString().c_str());
         }
-        ImGui::TreePop();
     }
 }
 

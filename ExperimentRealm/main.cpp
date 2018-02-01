@@ -1,13 +1,14 @@
 #include "Shader.h"
 #include "EntityLibrary.h"
 #include "InputHandler.h"
-#include "InputEvent.h"
 #include "InputEventFromSDL2.h"
 #include "RenderComponent.h"
 #include "EditorMaster.h"
 #include "RayVisualize.h"
-
-#include "OpenGL.h"
+#include "PrimitiveRenderer.h"
+#include "EntityManager.h"
+#include "Gizmo.h"
+#include "BezierCurve.h"
 
 #include <SDL.h>
 #include <ResourceManager.h>
@@ -27,12 +28,13 @@
 
 using namespace tc;
 
-class FCameraInputHandler;
-
 namespace tc
 {
 
+class FCameraInputHandler;
 class FGrid;
+
+FEditorMaster* GEditorMaster;
 
 }
 
@@ -46,6 +48,9 @@ FEditorMaster* editorMaster;
 NVGcontext* vg;
 long long frameCount = 0;
 bool bShowStyleEditor;
+
+namespace tc
+{
 
 class FCameraInputHandler : public IInputHandler
 {
@@ -102,19 +107,19 @@ public:
 
     bool MousePressed(const FMouseButtonEvent& evt) override
     {
-        if (evt.button == SDL_BUTTON_LEFT && AcceptLMBRotate)
+        if (evt.button == EMouseButton::Left && AcceptLMBRotate)
         {
             MouseCurrentlyOrbit = true;
             MouseLastX = evt.x;
             MouseLastY = evt.y;
         }
-        else if (evt.button == SDL_BUTTON_MIDDLE)
+        else if (evt.button == EMouseButton::Middle)
         {
             MouseCurrentlyOrbit = true;
             MouseLastX = evt.x;
             MouseLastY = evt.y;
         }
-        else if (evt.button == SDL_BUTTON_RIGHT)
+        else if (evt.button == EMouseButton::Right)
         {
             MouseInFpsView = true;
             MouseLastX = evt.x;
@@ -125,9 +130,9 @@ public:
 
     bool MouseReleased(const FMouseButtonEvent& evt) override
     {
-        if (evt.button == SDL_BUTTON_LEFT || evt.button == SDL_BUTTON_MIDDLE)
+        if (evt.button == EMouseButton::Left || evt.button == EMouseButton::Middle)
             MouseCurrentlyOrbit = false;
-        else if (evt.button == SDL_BUTTON_RIGHT)
+        else if (evt.button == EMouseButton::Right)
             MouseInFpsView = false;
         return false;
     }
@@ -257,602 +262,6 @@ public:
     }
 };
 
-class FPointRenderComponentStaticData
-{
-public:
-    FPointRenderComponentStaticData()
-    {
-        UserCount++;
-    }
-
-    ~FPointRenderComponentStaticData()
-    {
-        UserCount--;
-    }
-
-    static void RenderStaticInit()
-    {
-        if (bInitialized)
-            return;
-
-        bInitialized = true;
-
-        LOGDEBUG("FPointRenderComponentStaticData::RenderStaticInit called and ran\n");
-
-        glGenBuffers(1, Buffers);
-        glGenVertexArrays(1, VertexArrays);
-        glBindVertexArray(VertexArrays[0]);
-
-        const float origin[] = {0.0f, 0.0f, 0.0f};
-
-        glBindBuffer(GL_ARRAY_BUFFER, Buffers[0]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(origin), origin, GL_STATIC_DRAW);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-        glEnableVertexAttribArray(0);
-
-        glBindVertexArray(0);
-
-        Shader = FGLSLProgram::CreateFromFiles("fgizmocolor.vert", "fgizmocolor.frag");
-    }
-
-    static void RenderStaticDestroy()
-    {
-        LOGDEBUG("FPointRenderComponentStaticData usercount %d\n", UserCount);
-        if (!bInitialized || UserCount > 0)
-            return;
-
-        LOGDEBUG("FPointRenderComponentStaticData::RenderStaticDestroy called and ran\n");
-
-        delete Shader;
-        glDeleteBuffers(1, Buffers);
-        glDeleteVertexArrays(1, VertexArrays);
-    }
-
-protected:
-    static int UserCount;
-    static bool bInitialized;
-    static GLuint Buffers[1];
-    static GLuint VertexArrays[1];
-    static FGLSLProgram* Shader;
-};
-
-int FPointRenderComponentStaticData::UserCount = 0;
-bool FPointRenderComponentStaticData::bInitialized = false;
-GLuint FPointRenderComponentStaticData::Buffers[1];
-GLuint FPointRenderComponentStaticData::VertexArrays[1];
-FGLSLProgram* FPointRenderComponentStaticData::Shader;
-
-template <typename TOwner>
-class TPointRenderComponent : public IRenderComponent, public FPointRenderComponentStaticData
-{
-public:
-    TPointRenderComponent() : RenderWorld(nullptr) {}
-
-    void RenderInit(FViewPort* rw) override
-    {
-        RenderStaticInit();
-        RenderWorld = rw;
-    }
-
-    void Render() override
-    {
-        auto modelMatrix = static_cast<TOwner*>(this)->GetTransformMatrix();
-        Matrix4 mvp = RenderWorld->GetViewProjectionMatrix() * modelMatrix;
-        Shader->Enable();
-        Shader->SetUniformMatrix4fv("uModelViewProjectionMatrix", mvp.Data(), 1, true);
-        Shader->SetUniform3f("uColor", 1.0f, 1.0f, 0.0f);
-
-        glPointSize(10.0f);
-        glBindVertexArray(VertexArrays[0]);
-        glDrawArrays(GL_POINTS, 0, 1);
-        glBindVertexArray(0);
-    }
-
-    void RenderDestroy() override
-    {
-        RenderStaticDestroy();
-    }
-
-protected:
-    FViewPort* RenderWorld;
-};
-
-class FPointPrimitive : public FBaseEntity, public FPositionComponent, public TPointRenderComponent<FPointPrimitive>, public TPointRayIntersectComponent<FPointPrimitive>
-{
-public:
-    const char* GetTypeNameInString() const override
-    {
-        static const char* name = "FPointPrimitive";
-        return name;
-    }
-};
-
-namespace tc
-{
-
-enum class EAxis : uint8_t
-{
-    None,
-    X,
-    Y,
-    Z
-};
-
-template <typename TOwner>
-class TTranslateGizmoRenderComponent : public IRenderComponent
-{
-public:
-    TTranslateGizmoRenderComponent() : RenderWorld(nullptr), Shader(nullptr) {}
-
-    void RenderInit(FViewPort* rw) override
-    {
-        RenderWorld = rw;
-
-        float coneVertices[] = {
-                0.000000f, -1.000000f, -1.000000f,
-                0.000000f, 1.000000f, 0.000000f,
-                0.866025f, -1.000000f, -0.500000f,
-                0.866025f, -1.000000f, 0.500000f,
-                -0.000000f, -1.000000f, 1.000000f,
-                -0.866025f, -1.000000f, 0.500000f,
-                -0.866025f, -1.000000f, -0.500000f
-        };
-
-        unsigned short coneIndices[] = {
-                0, 1, 2,
-                2, 1, 3,
-                3, 1, 4,
-                4, 1, 5,
-                5, 1, 6,
-                6, 1, 0,
-                0, 2, 3,
-                0, 3, 4,
-                0, 4, 5,
-                0, 5, 6
-        };
-
-        float lineVertices[] = {
-                0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0
-        };
-
-        glGenBuffers(3, Buffers);
-        glGenVertexArrays(2, VertexArrays);
-
-        //Cone
-        glBindVertexArray(VertexArrays[0]);
-
-        glBindBuffer(GL_ARRAY_BUFFER, Buffers[0]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(coneVertices), coneVertices, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Buffers[1]);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(coneIndices), coneIndices, GL_STATIC_DRAW);
-
-        //Line
-        glBindVertexArray(VertexArrays[1]);
-
-        glBindBuffer(GL_ARRAY_BUFFER, Buffers[2]);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(lineVertices), lineVertices, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-        glBindVertexArray(0);
-
-        Shader = FGLSLProgram::CreateFromFiles("fgizmocolor.vert", "fgizmocolor.frag");
-    }
-
-    void Render() override
-    {
-        Matrix4 vpMatrix = RenderWorld->GetProjectionMatrix() * RenderWorld->GetViewMatrix();
-
-        Shader->Enable();
-
-        {
-            //Y axis
-            if (static_cast<TOwner*>(this)->GetHighlightAxis() == EAxis::Y)
-                Shader->SetUniform3f("uColor", 0.5, 1.0, 0.5);
-            else
-                Shader->SetUniform3f("uColor", 0.0, 0.77, 0.0);
-            Matrix3x4 localMatrix = Matrix3x4(Vector3(0.0f, 1.0f, 0.0f), Quaternion::IDENTITY, Vector3(0.1f, 0.1f, 0.1f));
-            Matrix3x4 modelMatrix = static_cast<TOwner*>(this)->GetTransformMatrix() * localMatrix;
-            Matrix4 mvp = vpMatrix * modelMatrix;
-
-            Shader->SetUniformMatrix4fv("uModelViewProjectionMatrix", mvp.Data(), 1, true);
-
-            glBindVertexArray(VertexArrays[0]);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Buffers[1]);
-            glDrawElements(GL_TRIANGLES, 30, GL_UNSIGNED_SHORT, nullptr);
-
-            localMatrix = Matrix3x4::IDENTITY;
-            modelMatrix = static_cast<TOwner*>(this)->GetTransformMatrix() * localMatrix;
-            mvp = vpMatrix * modelMatrix;
-            Shader->SetUniformMatrix4fv("uModelViewProjectionMatrix", mvp.Data(), 1, true);
-
-            glBindVertexArray(VertexArrays[1]);
-            glDrawArrays(GL_LINES, 0, 2);
-            glBindVertexArray(0);
-        }
-        {
-            //X axis
-            if (static_cast<TOwner*>(this)->GetHighlightAxis() == EAxis::X)
-                Shader->SetUniform3f("uColor", 1.0, 0.5, 0.5);
-            else
-                Shader->SetUniform3f("uColor", 1.0, 0.0, 0.0);
-            Matrix3x4 localMatrix = Matrix3x4(Vector3(1.0f, 0.0f, 0.0f), Quaternion(Vector3::UNIT_Y, Vector3::UNIT_X), Vector3(0.1f, 0.1f, 0.1f));
-            Matrix3x4 modelMatrix = static_cast<TOwner*>(this)->GetTransformMatrix() * localMatrix;
-            Matrix4 mvp = vpMatrix * modelMatrix;
-
-            Shader->SetUniformMatrix4fv("uModelViewProjectionMatrix", mvp.Data(), 1, true);
-
-            glBindVertexArray(VertexArrays[0]);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Buffers[1]);
-            glDrawElements(GL_TRIANGLES, 30, GL_UNSIGNED_SHORT, nullptr);
-
-            localMatrix = Matrix3x4(Vector3::ZERO, Quaternion(Vector3::UNIT_Y, Vector3::UNIT_X), Vector3::ONE);
-            modelMatrix = static_cast<TOwner*>(this)->GetTransformMatrix() * localMatrix;
-            mvp = vpMatrix * modelMatrix;
-            Shader->SetUniformMatrix4fv("uModelViewProjectionMatrix", mvp.Data(), 1, true);
-
-            glBindVertexArray(VertexArrays[1]);
-            glDrawArrays(GL_LINES, 0, 2);
-            glBindVertexArray(0);
-        }
-        {
-            //Z axis
-            if (static_cast<TOwner*>(this)->GetHighlightAxis() == EAxis::Z)
-                Shader->SetUniform3f("uColor", 0.5, 0.5, 1.0);
-            else
-                Shader->SetUniform3f("uColor", 0.0, 0.0, 1.0);
-            Matrix3x4 localMatrix = Matrix3x4(Vector3(0.0f, 0.0f, 1.0f), Quaternion(Vector3::UNIT_Y, Vector3::UNIT_Z), Vector3(0.1f, 0.1f, 0.1f));
-            Matrix3x4 modelMatrix = static_cast<TOwner*>(this)->GetTransformMatrix() * localMatrix;
-            Matrix4 mvp = vpMatrix * modelMatrix;
-
-            Shader->SetUniformMatrix4fv("uModelViewProjectionMatrix", mvp.Data(), 1, true);
-
-            glBindVertexArray(VertexArrays[0]);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, Buffers[1]);
-            glDrawElements(GL_TRIANGLES, 30, GL_UNSIGNED_SHORT, nullptr);
-
-            localMatrix = Matrix3x4(Vector3::ZERO, Quaternion(Vector3::UNIT_Y, Vector3::UNIT_Z), Vector3::ONE);
-            modelMatrix = static_cast<TOwner*>(this)->GetTransformMatrix() * localMatrix;
-            mvp = vpMatrix * modelMatrix;
-            Shader->SetUniformMatrix4fv("uModelViewProjectionMatrix", mvp.Data(), 1, true);
-
-            glBindVertexArray(VertexArrays[1]);
-            glDrawArrays(GL_LINES, 0, 2);
-            glBindVertexArray(0);
-        }
-    }
-
-    void RenderDestroy() override
-    {
-        delete Shader;
-        glDeleteBuffers(3, Buffers);
-        glDeleteVertexArrays(2, VertexArrays);
-    }
-
-private:
-    FViewPort* RenderWorld;
-    GLuint Buffers[3]{}, VertexArrays[2]{};
-    FGLSLProgram* Shader;
-};
-
-class FTranslateGizmo : public TTranslateGizmoRenderComponent<FTranslateGizmo>
-{
-public:
-    explicit FTranslateGizmo(FNode* trackedTransform)
-            : TransformNode(trackedTransform), HighlightAxis(EAxis::None)
-    {
-        TransformNode->AddRef();
-    }
-
-    FNode& GetTransformNode()
-    {
-        return *TransformNode;
-    }
-
-    const FNode& GetTransformNode() const
-    {
-        return *TransformNode;
-    }
-
-    const Matrix3x4& GetTransformMatrix() const
-    {
-        return TransformNode->GetTransformToWorld();
-    }
-
-    EAxis HitWorldSpaceRay(const Ray& worldRay)
-    {
-        auto worldToLocal = GetTransformMatrix().Inverse();
-        auto localRay = worldRay.Transformed(worldToLocal);
-
-        BoundingBox xAabb = BoundingBox(Vector3(0.0f, -0.1f, -0.1f), Vector3(1.1f, 0.1f, 0.1f));
-        BoundingBox yAabb = BoundingBox(Vector3(-0.1f, 0.0f -0.1f), Vector3(0.1f, 1.1f, 0.1f));
-        BoundingBox zAabb = BoundingBox(Vector3(-0.1f, -0.1f, 0.0f), Vector3(0.1f, 0.1f, 1.1f));
-        if (localRay.HitDistance(xAabb) < M_INFINITY)
-            return EAxis::X;
-        else if (localRay.HitDistance(yAabb) < M_INFINITY)
-            return EAxis::Y;
-        else if (localRay.HitDistance(zAabb) < M_INFINITY)
-            return EAxis::Z;
-        else
-            return EAxis::None;
-    }
-
-    EAxis GetHighlightAxis() const
-    {
-        return HighlightAxis;
-    }
-
-    void SetHighlightAxis(EAxis value)
-    {
-        HighlightAxis = value;
-    }
-
-    Ray GetAxisRayWorldSpace(EAxis axis)
-    {
-        Vector3 dir;
-        switch (axis)
-        {
-        case EAxis::X:
-            dir = Vector3::UNIT_X;
-            break;
-        case EAxis::Y:
-            dir = Vector3::UNIT_Y;
-            break;
-        case EAxis::Z:
-            dir = Vector3::UNIT_Z;
-            break;
-        default:
-            //Or probably throw an error or something
-            return Ray();
-        }
-        Ray localRay = Ray(Vector3::ZERO, dir);
-        return localRay.Transformed(GetTransformMatrix());
-    }
-
-private:
-    // Component: Transform
-    FNode* TransformNode;
-
-    // Data (Shared Data?) (Or What?)
-    EAxis HighlightAxis; //1=x 2=y 3=z
-};
-
-class FPointTranslateGizmo : public FTransformComponent, public TTranslateGizmoRenderComponent<FPointTranslateGizmo>
-{
-public:
-    explicit FPointTranslateGizmo(Vector3* trackedPoint) : TrackedPoint(trackedPoint), HighlightAxis(EAxis::None)
-    {
-        SetTransformFromPoint();
-    }
-
-    void SetTransformFromPoint()
-    {
-        GetTransformNode().SetTranslation(*TrackedPoint);
-    }
-
-    void MoveAlongAxis(EAxis axis, float offset)
-    {
-        switch (axis)
-        {
-        case EAxis::X:
-            GetTransformNode().Translate(offset, 0.0f, 0.0f);
-            break;
-        case EAxis::Y:
-            GetTransformNode().Translate(0.0f, offset, 0.0f);
-            break;
-        case EAxis::Z:
-            GetTransformNode().Translate(0.0f, 0.0f, offset);
-            break;
-        default:
-            break;
-        }
-        *TrackedPoint = GetTransformNode().GetTranslation();
-    }
-
-    EAxis HitWorldSpaceRay(const Ray& worldRay)
-    {
-        auto worldToLocal = GetTransformMatrix().Inverse();
-        auto localRay = worldRay.Transformed(worldToLocal);
-
-        BoundingBox xAabb = BoundingBox(Vector3(0.0f, -0.1f, -0.1f), Vector3(1.1f, 0.1f, 0.1f));
-        BoundingBox yAabb = BoundingBox(Vector3(-0.1f, 0.0f -0.1f), Vector3(0.1f, 1.1f, 0.1f));
-        BoundingBox zAabb = BoundingBox(Vector3(-0.1f, -0.1f, 0.0f), Vector3(0.1f, 0.1f, 1.1f));
-        if (localRay.HitDistance(xAabb) < M_INFINITY)
-            return EAxis::X;
-        else if (localRay.HitDistance(yAabb) < M_INFINITY)
-            return EAxis::Y;
-        else if (localRay.HitDistance(zAabb) < M_INFINITY)
-            return EAxis::Z;
-        else
-            return EAxis::None;
-    }
-
-    EAxis GetHighlightAxis() const
-    {
-        return HighlightAxis;
-    }
-
-    void SetHighlightAxis(EAxis value)
-    {
-        HighlightAxis = value;
-    }
-
-    Ray GetAxisRayWorldSpace(EAxis axis)
-    {
-        Vector3 dir;
-        switch (axis)
-        {
-        case EAxis::X:
-            dir = Vector3::UNIT_X;
-            break;
-        case EAxis::Y:
-            dir = Vector3::UNIT_Y;
-            break;
-        case EAxis::Z:
-            dir = Vector3::UNIT_Z;
-            break;
-        default:
-            //Or probably throw an error or something
-            return Ray();
-        }
-        Ray localRay = Ray(Vector3::ZERO, dir);
-        return localRay.Transformed(GetTransformMatrix());
-    }
-
-private:
-    // Data (Shared Data?) (Or What?)
-    Vector3* TrackedPoint;
-    EAxis HighlightAxis; //1=x 2=y 3=z
-};
-
-class FTranslateGizmoInputHandler : public IInputHandler
-{
-public:
-    FTranslateGizmoInputHandler(FTranslateGizmo* gizmo, FViewPort* vp)
-            : Gizmo(gizmo), ViewPort(vp), DragAlongAxis(EAxis::None), bDraggingAlong(false)
-    {
-    }
-
-    bool MouseMoved(const FMouseMotionEvent& evt) override
-    {
-        if (bDraggingAlong)
-        {
-            Gizmo->SetHighlightAxis(DragAlongAxis);
-            auto worldRay = ViewPort->GetRayTo(evt.x, evt.y);
-
-            Vector3 closestPoint = DragAlongRay.ClosestPoint(worldRay);
-            Vector3 offset = closestPoint - LastClosestPoint;
-            float offsetDist = offset.Length();
-            float offsetDotRaydir = offset.DotProduct(DragAlongRay.Direction);
-            float oneWithSign = offsetDotRaydir > 0.0f ? 1.0f : -1.0f;
-            switch (DragAlongAxis)
-            {
-            case EAxis::X:
-                Gizmo->GetTransformNode().Translate(offsetDist * oneWithSign, 0.0f, 0.0f);
-                break;
-            case EAxis::Y:
-                Gizmo->GetTransformNode().Translate(0.0f, offsetDist * oneWithSign, 0.0f);
-                break;
-            case EAxis::Z:
-                Gizmo->GetTransformNode().Translate(0.0f, 0.0f, offsetDist * oneWithSign);
-                break;
-            default:
-                break;
-            }
-            LastClosestPoint = closestPoint;
-            return true;
-        }
-        auto worldRay = ViewPort->GetRayTo(evt.x, evt.y);
-        auto hit = Gizmo->HitWorldSpaceRay(worldRay);
-        Gizmo->SetHighlightAxis(hit);
-        return false;
-    }
-
-    bool MousePressed(const FMouseButtonEvent& evt) override
-    {
-        if (evt.button == SDL_BUTTON_LEFT)
-        {
-            auto ray = ViewPort->GetRayTo(evt.x, evt.y);
-            auto hit = Gizmo->HitWorldSpaceRay(ray);
-            if (hit != EAxis::None)
-            {
-                DragAlongRay = Gizmo->GetAxisRayWorldSpace(hit);
-                DragAlongAxis = hit;
-                bDraggingAlong = true;
-
-                LastClosestPoint = DragAlongRay.ClosestPoint(ray);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool MouseReleased(const FMouseButtonEvent& evt) override
-    {
-        bDraggingAlong = false;
-        return false;
-    }
-
-private:
-    FTranslateGizmo* Gizmo;
-    FViewPort* ViewPort;
-
-    Ray DragAlongRay;
-    EAxis DragAlongAxis;
-    bool bDraggingAlong;
-    Vector3 LastClosestPoint;
-};
-
-class FPointTranslateGizmoInputHandler : public IInputHandler
-{
-public:
-    FPointTranslateGizmoInputHandler(FPointTranslateGizmo* gizmo, FViewPort* vp)
-            : Gizmo(gizmo), ViewPort(vp), DragAlongAxis(EAxis::None), bDraggingAlong(false)
-    {
-    }
-
-    bool MouseMoved(const FMouseMotionEvent& evt) override
-    {
-        if (bDraggingAlong)
-        {
-            Gizmo->SetHighlightAxis(DragAlongAxis);
-            auto worldRay = ViewPort->GetRayTo(evt.x, evt.y);
-
-            Vector3 closestPoint = DragAlongRay.ClosestPoint(worldRay);
-            Vector3 offset = closestPoint - LastClosestPoint;
-            float offsetDist = offset.Length();
-            float offsetDotRaydir = offset.DotProduct(DragAlongRay.Direction);
-            float oneWithSign = offsetDotRaydir > 0.0f ? 1.0f : -1.0f;
-            Gizmo->MoveAlongAxis(DragAlongAxis, offsetDist * oneWithSign);
-            LastClosestPoint = closestPoint;
-            return true;
-        }
-        auto worldRay = ViewPort->GetRayTo(evt.x, evt.y);
-        auto hit = Gizmo->HitWorldSpaceRay(worldRay);
-        Gizmo->SetHighlightAxis(hit);
-        return false;
-    }
-
-    bool MousePressed(const FMouseButtonEvent& evt) override
-    {
-        if (evt.button == SDL_BUTTON_LEFT)
-        {
-            auto ray = ViewPort->GetRayTo(evt.x, evt.y);
-            auto hit = Gizmo->HitWorldSpaceRay(ray);
-            if (hit != EAxis::None)
-            {
-                DragAlongRay = Gizmo->GetAxisRayWorldSpace(hit);
-                DragAlongAxis = hit;
-                bDraggingAlong = true;
-
-                LastClosestPoint = DragAlongRay.ClosestPoint(ray);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool MouseReleased(const FMouseButtonEvent& evt) override
-    {
-        bDraggingAlong = false;
-        return false;
-    }
-
-private:
-    FPointTranslateGizmo* Gizmo;
-    FViewPort* ViewPort;
-
-    Ray DragAlongRay;
-    EAxis DragAlongAxis;
-    bool bDraggingAlong;
-    Vector3 LastClosestPoint;
-
-};
-
 class FGrid
 {
     // Component: Render
@@ -945,14 +354,16 @@ FEditorMaster::FEditorMaster() : bWireframe(false), SelectedEntity(nullptr),Tran
                   TranslateGizmoInputHandler(nullptr), PointTranslateGizmo(nullptr),
                   PointTranslateGizmoInputHandler(nullptr), bToQuit(false)
 {
+    EntityManager = new FEntityManager();
     RayVisualizer = new FRayVisualizer(this);
+    PrimitiveRenderer = new FPrimitiveRenderer();
 }
 
 FEditorMaster::~FEditorMaster()
 {
-    for (auto* entity : EntityVector)
-        delete entity;
     delete RayVisualizer;
+    delete PrimitiveRenderer;
+    delete EntityManager;
 }
 
 
@@ -983,17 +394,13 @@ bool FEditorMaster::MousePressed(const FMouseButtonEvent& evt)
         //The closer entity wins if contested
         FBaseEntity* NewSelectedEntity = nullptr;
         float minHitDistance = M_INFINITY;
-        for (auto* entity : EntityVector)
+        for (auto* entity : EntityManager->GetComponents<IRayIntersectComponent>())
         {
-            auto* rayIntersectComp = dynamic_cast<IRayIntersectComponent*>(entity);
-            if (rayIntersectComp)
+            float distance = entity->RayHitDistance(worldRay);
+            if(distance < minHitDistance)
             {
-                float distance = rayIntersectComp->RayHitDistance(worldRay);
-                if(distance < minHitDistance)
-                {
-                    NewSelectedEntity = entity;
-                    minHitDistance = distance;
-                }
+                NewSelectedEntity = dynamic_cast<FBaseEntity*>(entity);
+                minHitDistance = distance;
             }
         }
 
@@ -1104,24 +511,38 @@ void FEditorMaster::ImGuiUpdate()
     {
         auto* box = new FBoxPrimitive();
         box->RenderInit(renderWorld);
-        EntityVector.push_back(box);
+        EntityManager->RegisterEntity(box);
         RenderComponentListHead.Insert(box);
     }
     if (ImGui::Button("Point"))
     {
         auto* point = new FPointPrimitive();
         point->RenderInit(renderWorld);
-        EntityVector.push_back(point);
+        EntityManager->RegisterEntity(point);
         RenderComponentListHead.Insert(point);
     }
-    ImGui::Button("Bezier Control Point");
+    if (ImGui::Button("Bezier Control Point"))
+    {
+        auto* primitive = new FBezierCurveControlPointPrimitive();
+        primitive->RenderInit(renderWorld);
+        EntityManager->RegisterEntity(primitive);
+        RenderComponentListHead.Insert(primitive);
+    }
     ImGui::End();
 
     RayVisualizer->ImGuiUpdate();
 }
 
+void FEditorMaster::RenderInit()
+{
+    PrimitiveRenderer->RenderInit(GetViewPort());
+}
+
 void FEditorMaster::Render()
 {
+    //TODO: Rethink this
+    PrimitiveRenderer->BeginFrame();
+
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LEQUAL);
 
@@ -1133,6 +554,8 @@ void FEditorMaster::Render()
     }
 
     RayVisualizer->Render();
+
+    PrimitiveRenderer->Render();
 
     glDisable(GL_DEPTH_TEST);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -1156,6 +579,8 @@ void FEditorMaster::RenderDestroy()
     }
 
     RayVisualizer->RenderDestroy();
+
+    PrimitiveRenderer->RenderDestroy();
 }
 
 bool FEditorMaster::IsQuitting() const
@@ -1171,6 +596,12 @@ void FEditorMaster::SetQuitting(bool v)
 FViewPort* FEditorMaster::GetViewPort() const
 {
     return renderWorld;
+}
+
+void FEditorMaster::InsertRenderAndInit(IRenderComponent* comp)
+{
+    comp->RenderInit(GetViewPort());
+    RenderComponentListHead.Insert(comp);
 }
 
 }
@@ -1339,7 +770,7 @@ FSkyboxRenderComponent* testSkybox;
 void myGlSetup()
 {
     GTimeline.Init();
-    editorMaster = new FEditorMaster();
+    GEditorMaster = editorMaster = new FEditorMaster();
     metaInputHandler = new FMetaInputHandler();
     metaInputHandler->Insert(editorMaster);
 
@@ -1353,12 +784,15 @@ void myGlSetup()
 
     FRayDisplay::RenderStaticInit();
     FSkyboxRenderComponent::RenderStaticInit();
+    FPrimitiveRenderer::RenderStaticInit();
 
     mainGrid = new FGrid();
     mainGrid->RenderInit(renderWorld);
 
     testSkybox = new FSkyboxRenderComponent();
     testSkybox->RenderInit(renderWorld);
+
+    editorMaster->RenderInit();
 
     vg = nvgCreateGL3(NVG_ANTIALIAS | NVG_STENCIL_STROKES | NVG_DEBUG);
 
@@ -1461,8 +895,8 @@ void myGlCleanup()
     delete metaInputHandler;
 
     FRayDisplay::RenderStaticDestroy();
-    FPointPrimitive::RenderStaticDestroy();
     FSkyboxRenderComponent::RenderStaticDestroy();
+    FPrimitiveRenderer::RenderStaticDestroy();
 }
 
 int main()
