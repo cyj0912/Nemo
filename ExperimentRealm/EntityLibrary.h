@@ -13,8 +13,8 @@ class FBaseEntity
 public:
     virtual ~FBaseEntity();
     virtual const char* GetTypeNameInString() const;
-    virtual size_t CountSubentities() const;
-    virtual FBaseEntity* GetSubentity(size_t index);
+    virtual size_t CountSubEntities() const;
+    virtual FBaseEntity* GetSubEntity(size_t index);
 };
 
 class FTransformComponent

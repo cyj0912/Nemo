@@ -73,9 +73,9 @@ public:
 
     const char* GetTypeNameInString() const override;
 
-    size_t CountSubentities() const override;
+    size_t CountSubEntities() const override;
 
-    FBaseEntity* GetSubentity(size_t index) override;
+    FBaseEntity* GetSubEntity(size_t index) override;
 
     void RenderInit(FViewPort* rw) override;
 

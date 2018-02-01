@@ -68,12 +68,12 @@ const char* FBezierCurveControlPointPrimitive::GetTypeNameInString() const
     return name;
 }
 
-size_t FBezierCurveControlPointPrimitive::CountSubentities() const
+size_t FBezierCurveControlPointPrimitive::CountSubEntities() const
 {
     return 3;
 }
 
-FBaseEntity* FBezierCurveControlPointPrimitive::GetSubentity(size_t index)
+FBaseEntity* FBezierCurveControlPointPrimitive::GetSubEntity(size_t index)
 {
     assert(index < 3);
     switch(index)

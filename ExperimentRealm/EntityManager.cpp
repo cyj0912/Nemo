@@ -13,10 +13,10 @@ FEntityManager::~FEntityManager()
 void FEntityManager::RegisterEntity(FBaseEntity* entity)
 {
     Entities.insert(entity);
-    if (entity->CountSubentities())
-        for (size_t i = 0; i < entity->CountSubentities(); i++)
+    if (entity->CountSubEntities())
+        for (size_t i = 0; i < entity->CountSubEntities(); i++)
         {
-            RegisterEntity(entity->GetSubentity(i));
+            RegisterEntity(entity->GetSubEntity(i));
         }
 }
 

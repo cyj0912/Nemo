@@ -13,12 +13,12 @@ const char* FBaseEntity::GetTypeNameInString() const
     return name;
 }
 
-size_t FBaseEntity::CountSubentities() const
+size_t FBaseEntity::CountSubEntities() const
 {
     return 0;
 }
 
-FBaseEntity* FBaseEntity::GetSubentity(size_t index)
+FBaseEntity* FBaseEntity::GetSubEntity(size_t index)
 {
     return nullptr;
 }
