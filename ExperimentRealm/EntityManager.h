@@ -13,6 +13,8 @@ public:
 
     void RegisterEntity(FBaseEntity* entity, bool bIsSub = false);
 
+    void UnregisterEntity(FBaseEntity* entity);
+
     template <typename T> set<T*> GetComponents()
     {
         set<T*> result;

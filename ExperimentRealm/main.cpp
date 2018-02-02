@@ -11,11 +11,16 @@
 #include "BezierCurve.h"
 #include "InteractionSystem.h"
 
+#include <Timeline.h>
+#include <Platform.h>
+
+#if TC_OS == TC_OS_WINDOWS_NT
+#include <SDL2/SDL.h>
+#else
 #include <SDL.h>
+#endif
 #include <ResourceManager.h>
 #include <Image.h>
-
-#include <Timeline.h>
 
 #include <Camera.h>
 #include <SceneNode.h>
@@ -610,9 +615,9 @@ void FEditorMaster::InsertRenderAndInit(IRenderComponent* comp)
     RenderComponentListHead.Insert(comp);
 }
 
-void FEditorMaster::RegisterEntity(FBaseEntity* entity)
+void FEditorMaster::RegisterEntity(FBaseEntity* entity, bool isSubEntity)
 {
-    EntityManager->RegisterEntity(entity);
+    EntityManager->RegisterEntity(entity, isSubEntity);
     auto* renderComp = dynamic_cast<IRenderComponent*>(entity);
     if (renderComp)
         InsertRenderAndInit(renderComp);
@@ -915,6 +920,9 @@ void myGlCleanup()
     FBezierCurveRenderComponentStaticData::RenderStaticDestroy();
 }
 
+#if TC_OS == TC_OS_WINDOWS_NT
+#undef main
+#endif
 int main()
 {
     GResourceManager.Init();
@@ -931,6 +939,10 @@ int main()
     //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
     //SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 8);
     SDL_GLContext glContext = SDL_GL_CreateContext(window);
+
+#if TC_OS == TC_OS_WINDOWS_NT
+	gladLoadGL();
+#endif
 
     auto* verStr = glGetString(GL_VERSION);
     printf("%s\n", verStr);

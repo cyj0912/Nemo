@@ -1,4 +1,3 @@
-#include <CoreImage/CoreImage.h>
 #include "Gizmo.h"
 
 namespace tc

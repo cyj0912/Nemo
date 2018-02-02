@@ -2,7 +2,11 @@
 
 #include "InputEvent.h"
 
-#include <SDL_events.h>
+#if TC_OS == TC_OS_WINDOWS_NT
+#include <SDL2/SDL_events.h>
+#else
+#include <SDL.h>
+#endif
 
 namespace tc
 {

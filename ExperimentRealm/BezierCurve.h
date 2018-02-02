@@ -12,6 +12,8 @@
 namespace tc
 {
 
+class FStaticMesh;
+
 class FBezierCurveControlPointPrimitive : public FBaseEntity,
                                           public IRenderComponent,
                                           public IInteractionComponent
@@ -47,11 +49,27 @@ public:
 
     void ImGuiUpdate(FInteractionSystem* interactionSystem) override;
 
+    const FPointPrimitive& GetFrontPoint() const
+    {
+        return FrontPoint;
+    }
+
+    const FPointPrimitive& GetMiddlePoint() const
+    {
+        return MiddlePoint;
+    }
+
+    const FPointPrimitive& GetBackPoint() const
+    {
+        return BackPoint;
+    }
+
 private:
     FPointPrimitive FrontPoint;
     FPointPrimitive MiddlePoint;
     FPointPrimitive BackPoint;
 
+    //Don't inherit this interface so that EditorMaster doesn't find out about it
     class IntersectionTester : public IRayIntersectComponent
     {
     public:
@@ -86,37 +104,27 @@ public:
 protected:
 };
 
-class FBezierCurve : public FBaseEntity, public TBezierCurveRenderComponent<FBezierCurve>
+class FBezierCurve : public FBaseEntity,
+                     public TBezierCurveRenderComponent<FBezierCurve>,
+                     public IInteractionComponent
 {
 public:
-    FBezierCurve() : ViewPort(nullptr) {}
+    FBezierCurve();
+
+    ~FBezierCurve() override;
+
+    const char* GetTypeNameInString() const override;
 
     void RenderInit(FViewPort* rw) override
     {
         ViewPort = rw;
     }
 
-    void RenderBezierSegment(FBezierCurveControlPointPrimitive* cp0, FBezierCurveControlPointPrimitive* cp1)
-    {
-        float dist = cp0->GetDistance(*cp1);
-        int numLineSegments = (int)(dist * 4.0f);
-        float tStep = 1.0f / (float)numLineSegments;
-        for (int i = 0; i < numLineSegments; i++)
-        {
-            auto lineFrom = cp0->InterpolatePosition(*cp1, tStep * (float)i);
-            auto lineTo = cp0->InterpolatePosition(*cp1, tStep * (float)(i + 1));
-            GEditorMaster->GetPrimitiveRenderer()->DrawLine(lineFrom, lineTo, 1.0f, Color::MAGENTA);
-        }
-    }
+    void RenderBezierSegment(FBezierCurveControlPointPrimitive* cp0, FBezierCurveControlPointPrimitive* cp1);
 
-    void Render() override
-    {
-        size_t nSegments = ControlPoints.size() - 1;
-        for (auto i = 0; i < nSegments; i++)
-        {
-            RenderBezierSegment(ControlPoints[i], ControlPoints[i + 1]);
-        }
-    }
+    void GenerateSweepMesh(FBezierCurveControlPointPrimitive* cp0, FBezierCurveControlPointPrimitive* cp1);
+
+    void Render() override;
 
     void RenderDestroy() override
     {
@@ -132,9 +140,32 @@ public:
         ControlPoints.push_front(cp);
     }
 
+    void CreateGizmo(FInteractionSystem* system) override
+    {
+        //No gizmo
+    }
+
+    IRayIntersectComponent* GetRayIntersectComponent() override
+    {
+        return &IntersectionTester;
+    }
+
+    void ImGuiUpdate(FInteractionSystem* interactionSystem) override;
+
 private:
     FViewPort* ViewPort;
     deque<FBezierCurveControlPointPrimitive*, std::allocator<FBezierCurveControlPointPrimitive*>> ControlPoints;
+    bool bSweep;
+    FStaticMesh* SweepMesh;
+    bool bShowTan, bShowInward, bShowNormal, bShowBiNormal;
+
+    //Don't inherit this interface so that EditorMaster doesn't find out about it
+    class IntersectionTester : public IRayIntersectComponent
+    {
+    public:
+        float RayHitDistance(const Ray& ray) override;
+        FBezierCurve* Owner;
+    } IntersectionTester;
 };
 
 } /* namespace tc */

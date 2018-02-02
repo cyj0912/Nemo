@@ -1,10 +1,13 @@
 #include "EntityLibrary.h"
+#include "EntityManager.h"
 
 namespace tc
 {
 
 FBaseEntity::~FBaseEntity()
 {
+    if (Manager)
+        Manager->UnregisterEntity(this);
 }
 
 const char* FBaseEntity::GetTypeNameInString() const

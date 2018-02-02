@@ -99,7 +99,7 @@ private:
 class IRenderComponent
 {
 public:
-    virtual void RenderInit(FViewPort* rw) = 0;
+    virtual void RenderInit(FViewPort* vp) = 0;
     virtual void Render() = 0;
     virtual void RenderDestroy() = 0;
 

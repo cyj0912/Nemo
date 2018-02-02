@@ -75,7 +75,7 @@ public:
 
     void InsertRenderAndInit(IRenderComponent* comp);
 
-    void RegisterEntity(FBaseEntity* entity);
+    void RegisterEntity(FBaseEntity* entity, bool isSubEntity = false);
 
 private:
     bool bWireframe;

@@ -11,9 +11,16 @@
 #include "imgui.h"
 #include "imgui_impl_sdl_gl3.h"
 
+#include <Platform.h>
+
 // SDL
+#if TC_OS == TC_OS_WINDOWS_NT
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_syswm.h>
+#else
 #include <SDL.h>
 #include <SDL_syswm.h>
+#endif
 
 #include "../OpenGL.h"
 

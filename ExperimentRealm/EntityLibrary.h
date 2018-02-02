@@ -13,11 +13,25 @@ class FInteractionSystem;
 class FBaseEntity
 {
 public:
+    FBaseEntity() : Manager(nullptr) {}
     virtual ~FBaseEntity();
     virtual const char* GetTypeNameInString() const;
     virtual size_t CountSubEntities() const;
     virtual FBaseEntity* GetSubEntity(size_t index);
     virtual void ImGuiUpdate(FInteractionSystem* interactionSystem);
+
+    FEntityManager* GetEntityManager() const
+    {
+        return Manager;
+    }
+
+    void SetEntityManager(FEntityManager* value)
+    {
+        Manager = value;
+    }
+
+private:
+    FEntityManager* Manager;
 };
 
 class FTransformComponent
