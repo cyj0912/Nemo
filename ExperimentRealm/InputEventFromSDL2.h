@@ -28,7 +28,8 @@ FKeyboardEvent ConvertKeyboardEvent(const SDL_KeyboardEvent& e)
 FMouseMotionEvent ConvertMouseMotionEvent(const SDL_MouseMotionEvent& e)
 {
     FMouseMotionEvent result;
-    static_assert(sizeof(FMouseMotionEvent) == sizeof(SDL_MouseMotionEvent));
+    static_assert(sizeof(FMouseMotionEvent) == sizeof(SDL_MouseMotionEvent),
+		"FMouseMotionEvent is not the same size as SDL_MouseMotionEvent");
     memcpy(&result, &e, sizeof(result));
     return result;
 }
@@ -36,7 +37,8 @@ FMouseMotionEvent ConvertMouseMotionEvent(const SDL_MouseMotionEvent& e)
 FMouseButtonEvent ConvertMouseButtonEvent(const SDL_MouseButtonEvent& e)
 {
     FMouseButtonEvent result;
-    static_assert(sizeof(FMouseButtonEvent) == sizeof(SDL_MouseButtonEvent));
+    static_assert(sizeof(FMouseButtonEvent) == sizeof(SDL_MouseButtonEvent),
+		"FMouseButtonEvent is not the same size as SDL_MouseButtonEvent");
     memcpy(&result, &e, sizeof(result));
     return result;
 }
@@ -44,7 +46,8 @@ FMouseButtonEvent ConvertMouseButtonEvent(const SDL_MouseButtonEvent& e)
 FMouseWheelEvent ConvertMouseWheelEvent(const SDL_MouseWheelEvent& e)
 {
     FMouseWheelEvent result;
-    static_assert(sizeof(FMouseWheelEvent) == sizeof(SDL_MouseWheelEvent));
+    static_assert(sizeof(FMouseWheelEvent) == sizeof(SDL_MouseWheelEvent),
+		"FMouseWheelEvent is not the same size as SDL_MouseWheelEvent");
     memcpy(&result, &e, sizeof(result));
     return result;
 }

@@ -87,8 +87,8 @@ public:
     {
         if (MouseCurrentlyOrbit)
         {
-            float deltaX = evt.x - MouseLastX;
-            float deltaY = evt.y - MouseLastY;
+			float deltaX = (float)(evt.x - MouseLastX);
+			float deltaY = (float)(evt.y - MouseLastY);
 
             Camera->GetCameraPivot().Yaw(-deltaX * 0.25f, TS_WORLD);
             Camera->GetCameraPivot().Pitch(-deltaY * 0.25f);
@@ -99,8 +99,8 @@ public:
         }
         else if (MouseInFpsView)
         {
-            float deltaX = evt.x - MouseLastX;
-            float deltaY = evt.y - MouseLastY;
+			float deltaX = (float)(evt.x - MouseLastX);
+			float deltaY = (float)(evt.y - MouseLastY);
 
             //Camera->GetCameraTransform().Yaw(-deltaX * 0.25f, TS_WORLD);
             Camera->GetCameraTransform().Pitch(-deltaY * 0.25f);
@@ -786,7 +786,7 @@ private:
 
 FSkyboxRenderComponent* testSkybox;
 
-void myGlSetup()
+void myGlSetup(SDL_Window* window)
 {
     GTimeline.Init();
     GEditorMaster = editorMaster = new FEditorMaster();
@@ -798,7 +798,7 @@ void myGlSetup()
     metaInputHandler->Insert(cameraInputHandler);
 
     renderWorld = new FViewPort(cameraWithPivot, 1600, 900);
-    cameraWithPivot->GetCameraTransform().Translate(0, 3, 6.18);
+    cameraWithPivot->GetCameraTransform().Translate(0.f, 3.f, 6.18f);
     cameraWithPivot->GetCameraTransform().LookAt(Vector3::ZERO);
 
     FRayDisplay::RenderStaticInit();
@@ -823,7 +823,7 @@ void myGlSetup()
     if (fontResult == -1)
         LOGWARN("sans-bold wasn't successfully created\n");
 
-    ImGui_ImplSdlGL3_Init();
+    ImGui_ImplSdlGL3_Init(window);
     ImGui::StyleColorsDark();
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->AddFontFromFileTTF(GResourceManager.FindFile("Roboto-Light.ttf").c_str(), 20.0f);
@@ -857,7 +857,11 @@ bool myUpdateAndRender(SDL_Window* window)
     float textX = 5, textY = 50;
     char fpsText[128];
 
-    sprintf(fpsText, "clk: %d, frm: %lld, fps: %f", GTimeline.NowMilliSec(), frameCount, fps);
+#if TC_OS == TC_OS_WINDOWS_NT
+	sprintf_s(fpsText, "clk: %d, frm: %lld, fps: %f", GTimeline.NowMilliSec(), frameCount, fps);
+#else
+	sprintf(fpsText, "clk: %d, frm: %lld, fps: %f", GTimeline.NowMilliSec(), frameCount, fps);
+#endif
 
     nvgBeginFrame(vg, 1600, 900, 1.0f);
     nvgFontSize(vg, 32.0f);
@@ -945,7 +949,7 @@ int main()
     auto* verStr = glGetString(GL_VERSION);
     printf("%s\n", verStr);
 
-    myGlSetup();
+    myGlSetup(window);
 
     bool quit = false;
     SDL_Event e{};

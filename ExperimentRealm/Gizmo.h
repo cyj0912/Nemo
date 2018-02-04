@@ -91,9 +91,9 @@ public:
         {
             //Y axis
             if (static_cast<TOwner*>(this)->GetHighlightAxis() == EAxis::Y)
-                Shader->SetUniform3f("uColor", 0.5, 1.0, 0.5);
+                Shader->SetUniform3f("uColor", 0.5f, 1.0f, 0.5f);
             else
-                Shader->SetUniform3f("uColor", 0.0, 0.77, 0.0);
+                Shader->SetUniform3f("uColor", 0.0f, 0.77f, 0.0f);
             Matrix3x4 localMatrix = Matrix3x4(Vector3(0.0f, 1.0f, 0.0f), Quaternion::IDENTITY, Vector3(0.1f, 0.1f, 0.1f));
             Matrix3x4 modelMatrix = static_cast<TOwner*>(this)->GetTransformMatrix() * localMatrix;
             Matrix4 mvp = vpMatrix * modelMatrix;

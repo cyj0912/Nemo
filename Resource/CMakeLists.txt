@@ -1,5 +1,7 @@
 set(MODULE_NAME Resource)
 
+find_package(Assimp REQUIRED)
+
 file(GLOB PRIVATE_SOURCES Private/*.h Private/*.cpp)
 file(GLOB PUBLIC_SOURCES Public/*.h)
 source_group(Private FILES ${PRIVATE_SOURCES})
@@ -16,5 +18,8 @@ target_include_directories(${MODULE_NAME} PUBLIC Public)
 target_compile_options(${MODULE_NAME} ${DEFAULT_COMPILE_OPTIONS})
 target_link_libraries(${MODULE_NAME} PRIVATE Foundation)
 target_link_libraries(${MODULE_NAME} PRIVATE Math)
-target_link_libraries(${MODULE_NAME} PRIVATE ThirdParty::assimp)
+
+target_include_directories(${MODULE_NAME} PRIVATE ${ASSIMP_INCLUDE_DIRS})
+target_link_libraries(${MODULE_NAME} PRIVATE ${ASSIMP_LIBRARIES})
+
 target_link_libraries(${MODULE_NAME} PRIVATE ThirdParty::stb)

@@ -1,7 +1,4 @@
 cmake_minimum_required(VERSION 3.9)
-project(ExperimentRealm)
-
-set(CMAKE_CXX_STANDARD 17)
 
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
@@ -9,7 +6,14 @@ find_package(OpenGL REQUIRED)
 file(GLOB IMGUI_HEADERS imgui/*.h)
 file(GLOB IMGUI_SOURCES imgui/*.cpp)
 
-add_executable(ExperimentRealm main.cpp Shader.cpp Shader.h ${IMGUI_HEADERS} ${IMGUI_SOURCES} EntityLibrary.cpp EntityLibrary.h InputHandler.cpp InputHandler.h InputEvent.h KeySym.h InputEventFromSDL2.h OpenGL.h BezierCurve.cpp BezierCurve.h RenderComponent.h UVSphere.cpp UVSphere.h RayVisualize.cpp RayVisualize.h EditorMaster.h PrimitiveRenderer.cpp PrimitiveRenderer.h InteractionSystem.cpp InteractionSystem.h EntityManager.cpp EntityManager.h Gizmo.cpp Gizmo.h Mesh.cpp Mesh.h)
+file(GLOB MAIN_SOURCES *.cpp)
+file(GLOB MAIN_HEADERS *.h)
+
+add_executable(ExperimentRealm
+	${IMGUI_HEADERS} ${IMGUI_SOURCES} ${MAIN_SOURCES} ${MAIN_HEADERS}
+)
+
+target_compile_options(ExperimentRealm ${DEFAULT_COMPILE_OPTIONS})
 
 target_link_libraries(ExperimentRealm PRIVATE Foundation)
 target_link_libraries(ExperimentRealm PRIVATE Math)

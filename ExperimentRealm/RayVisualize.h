@@ -48,7 +48,7 @@ public:
 
         const auto& ray = static_cast<TOwner*>(this)->GetRay();
 
-        static_assert(sizeof(ray) == sizeof(float) * 6);
+        static_assert(sizeof(ray) == sizeof(float) * 6, "Ray is not 6 floats");
         Vector3 ends[2];
         ends[0] = ray.Origin;
         ends[1] = ray.Direction * 50.0f + ray.Origin;

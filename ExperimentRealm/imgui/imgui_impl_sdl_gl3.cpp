@@ -363,11 +363,6 @@ bool    ImGui_ImplSdlGL3_Init(SDL_Window* window)
     return true;
 }
 
-bool ImGui_ImplSdlGL3_Init()
-{
-    return ImGui_ImplSdlGL3_Init(nullptr);
-}
-
 void ImGui_ImplSdlGL3_Shutdown()
 {
     ImGui_ImplSdlGL3_InvalidateDeviceObjects();
