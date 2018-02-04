@@ -12,6 +12,10 @@ FCamera::FCamera()
 
 Matrix4 FCamera::GetProjectionMatrix()
 {
+    /*
+     * TODO:
+     * OpenGL has z from -1 to 1, but DX uses 0 to 1
+     */
     auto projection = Matrix4::ZERO;
 
     if (!bUsesOrthoProjection)

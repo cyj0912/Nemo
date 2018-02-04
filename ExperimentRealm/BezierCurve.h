@@ -78,34 +78,8 @@ private:
     } IntersectionTester;
 };
 
-class FBezierCurveRenderComponentStaticData
-{
-public:
-    FBezierCurveRenderComponentStaticData();
-
-    ~FBezierCurveRenderComponentStaticData();
-
-    static void RenderStaticInit();
-
-    static void RenderStaticDestroy();
-
-protected:
-    static int UserCount;
-    static bool bInitialized;
-    static GLuint Buffers[1];
-    static GLuint VertexArrays[1];
-    static FGLSLProgram* Shader;
-};
-
-template <typename TOwner>
-class TBezierCurveRenderComponent : public IRenderComponent, public FBezierCurveRenderComponentStaticData
-{
-public:
-protected:
-};
-
 class FBezierCurve : public FBaseEntity,
-                     public TBezierCurveRenderComponent<FBezierCurve>,
+                     public IRenderComponent,
                      public IInteractionComponent
 {
 public:

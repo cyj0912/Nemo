@@ -804,7 +804,6 @@ void myGlSetup()
     FRayDisplay::RenderStaticInit();
     FSkyboxRenderComponent::RenderStaticInit();
     FPrimitiveRenderer::RenderStaticInit();
-    FBezierCurveRenderComponentStaticData::RenderStaticInit();
 
     mainGrid = new FGrid();
     mainGrid->RenderInit(renderWorld);
@@ -917,7 +916,6 @@ void myGlCleanup()
     FRayDisplay::RenderStaticDestroy();
     FSkyboxRenderComponent::RenderStaticDestroy();
     FPrimitiveRenderer::RenderStaticDestroy();
-    FBezierCurveRenderComponentStaticData::RenderStaticDestroy();
 }
 
 #if TC_OS == TC_OS_WINDOWS_NT
