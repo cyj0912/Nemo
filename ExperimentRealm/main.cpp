@@ -67,7 +67,9 @@ class FCameraInputHandler : public IInputHandler
     int MouseLastX, MouseLastY;
 public:
     explicit FCameraInputHandler(FCameraWithPivot* Camera) : Camera(Camera), AcceptLMBRotate(false)
-    , MouseCurrentlyOrbit(false), MouseInFpsView(false) {}
+    , MouseCurrentlyOrbit(false), MouseInFpsView(false), MouseLastX(0), MouseLastY(0)
+    {
+    }
 
     bool KeyPressed(const FKeyboardEvent& evt) override
     {
@@ -87,8 +89,8 @@ public:
     {
         if (MouseCurrentlyOrbit)
         {
-			float deltaX = (float)(evt.x - MouseLastX);
-			float deltaY = (float)(evt.y - MouseLastY);
+			auto deltaX = (float)(evt.x - MouseLastX);
+            auto deltaY = (float)(evt.y - MouseLastY);
 
             Camera->GetCameraPivot().Yaw(-deltaX * 0.25f, TS_WORLD);
             Camera->GetCameraPivot().Pitch(-deltaY * 0.25f);
@@ -99,8 +101,8 @@ public:
         }
         else if (MouseInFpsView)
         {
-			float deltaX = (float)(evt.x - MouseLastX);
-			float deltaY = (float)(evt.y - MouseLastY);
+            auto deltaX = (float)(evt.x - MouseLastX);
+            auto deltaY = (float)(evt.y - MouseLastY);
 
             //Camera->GetCameraTransform().Yaw(-deltaX * 0.25f, TS_WORLD);
             Camera->GetCameraTransform().Pitch(-deltaY * 0.25f);
@@ -781,7 +783,7 @@ public:
     }
 
 private:
-    FViewPort* ViewPort;
+    FViewPort* ViewPort = nullptr;
 };
 
 FSkyboxRenderComponent* testSkybox;
@@ -952,7 +954,7 @@ int main()
     myGlSetup(window);
 
     bool quit = false;
-    SDL_Event e{};
+    SDL_Event e;
     while (!quit)
     {
         while (SDL_PollEvent(&e))
