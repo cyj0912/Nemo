@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SceneNode.h>
+#include <Camera.h>
 #include <Ray.h>
 
 namespace tc
