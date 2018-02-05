@@ -31,7 +31,7 @@ FNode& FNode::operator=(const FNode& rhs)
     Name = rhs.Name;
     Parent = rhs.Parent;
     RootNode = rhs.RootNode;
-    Children.clear()
+    Children.clear();
     Translation = rhs.Translation;
     Rotation = rhs.Rotation;
     Scale = rhs.Scale;

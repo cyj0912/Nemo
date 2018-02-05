@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2008-2017 the Urho3D project.
+// Copyright (c) 2008-2018 the Urho3D project.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,7 @@ class MATH_API Color
 {
 public:
     /// Construct with default values (opaque white.)
-    Color() :
+    Color() noexcept :
         r_(1.0f),
         g_(1.0f),
         b_(1.0f),
@@ -44,16 +44,10 @@ public:
     }
 
     /// Copy-construct from another color.
-    Color(const Color& color) :
-        r_(color.r_),
-        g_(color.g_),
-        b_(color.b_),
-        a_(color.a_)
-    {
-    }
+    Color(const Color& color) noexcept = default;
 
     /// Construct from another color and modify the alpha.
-    Color(const Color& color, float a) :
+    Color(const Color& color, float a) noexcept :
         r_(color.r_),
         g_(color.g_),
         b_(color.b_),
@@ -62,7 +56,7 @@ public:
     }
 
     /// Construct from RGB values and set alpha fully opaque.
-    Color(float r, float g, float b) :
+    Color(float r, float g, float b) noexcept :
         r_(r),
         g_(g),
         b_(b),
@@ -71,7 +65,7 @@ public:
     }
 
     /// Construct from RGBA values.
-    Color(float r, float g, float b, float a) :
+    Color(float r, float g, float b, float a) noexcept :
         r_(r),
         g_(g),
         b_(b),
@@ -80,7 +74,7 @@ public:
     }
 
     /// Construct from a float array.
-    explicit Color(const float* data) :
+    explicit Color(const float* data) noexcept :
         r_(data[0]),
         g_(data[1]),
         b_(data[2]),
@@ -89,14 +83,7 @@ public:
     }
 
     /// Assign from another color.
-    Color& operator =(const Color& rhs)
-    {
-        r_ = rhs.r_;
-        g_ = rhs.g_;
-        b_ = rhs.b_;
-        a_ = rhs.a_;
-        return *this;
-    }
+    Color& operator =(const Color& rhs) noexcept = default;
 
     /// Test for equality with another color without epsilon.
     bool operator ==(const Color& rhs) const { return r_ == rhs.r_ && g_ == rhs.g_ && b_ == rhs.b_ && a_ == rhs.a_; }
