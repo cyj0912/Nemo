@@ -18,25 +18,20 @@ FNode::FNode(const FNode& rhs) : Name(rhs.Name), Parent(rhs.Parent), RootNode(rh
 {
 }
 
-FNode::FNode(FNode&& rhs) noexcept : Name(std::move(rhs.Name)), Parent(std::move(rhs.Parent)), RootNode(std::move(rhs.RootNode)), Children(std::move(rhs.Children)),
-                            Translation(std::move(rhs.Translation)), Rotation(std::move(rhs.Rotation)), Scale(std::move(rhs.Scale)),
-                            TransformToParentDirty(true), TransformFromParentDirty(true),
-                            WorldTransformDirty(true), InverseWorldTransformDirty(true)
+FNode::FNode(FNode&& rhs) noexcept : Name(std::move(rhs.Name)), Parent(rhs.Parent), RootNode(rhs.RootNode), Children(std::move(rhs.Children)),
+                                     Translation(rhs.Translation), Rotation(rhs.Rotation), Scale(rhs.Scale),
+                                     TransformToParentDirty(true), TransformFromParentDirty(true),
+                                     WorldTransformDirty(true), InverseWorldTransformDirty(true)
 {
+    rhs.Children.clear();
 }
 
 FNode& FNode::operator=(const FNode& rhs)
 {
-    *this = FNode(rhs);
-    return *this;
-}
-
-FNode& FNode::operator=(FNode&& rhs) noexcept
-{
-    Name = std::move(rhs.Name);
+    Name = rhs.Name;
     Parent = rhs.Parent;
     RootNode = rhs.RootNode;
-    Children = std::move(rhs.Children);
+    Children.clear()
     Translation = rhs.Translation;
     Rotation = rhs.Rotation;
     Scale = rhs.Scale;
@@ -44,6 +39,26 @@ FNode& FNode::operator=(FNode&& rhs) noexcept
     TransformFromParentDirty = true;
     WorldTransformDirty = true;
     InverseWorldTransformDirty = true;
+    return *this;
+}
+
+FNode& FNode::operator=(FNode&& rhs) noexcept
+{
+    if (this != &rhs)
+    {
+        Name = std::move(rhs.Name);
+        Parent = rhs.Parent;
+        RootNode = rhs.RootNode;
+        Children = std::move(rhs.Children);
+        rhs.Children.clear();
+        Translation = rhs.Translation;
+        Rotation = rhs.Rotation;
+        Scale = rhs.Scale;
+        TransformToParentDirty = true;
+        TransformFromParentDirty = true;
+        WorldTransformDirty = true;
+        InverseWorldTransformDirty = true;
+    }
     return *this;
 }
 
