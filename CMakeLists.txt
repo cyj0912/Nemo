@@ -23,7 +23,6 @@ if(WIN32 AND ${BUILD_SHARED_LIBS})
 endif()
 
 include(CompileOptions)
-include_directories(SharedHeaders)
 add_subdirectory(Foundation)
 add_subdirectory(Math)
 add_subdirectory(Resource)
