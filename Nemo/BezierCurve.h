@@ -122,6 +122,8 @@ private:
     bool bSweep;
     FStaticMesh* SweepMesh;
     bool bShowTan, bShowInward, bShowNormal, bShowBiNormal;
+    bool bAutoNumSegment;
+    int NumSegments;
 
     //Don't inherit this interface so that EditorMaster doesn't find out about it
     class IntersectionTester : public IRayIntersectComponent

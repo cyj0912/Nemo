@@ -182,7 +182,8 @@ float FBezierCurveControlPointPrimitive::IntersectionTester::RayHitDistance(cons
 }
 
 FBezierCurve::FBezierCurve() : ViewPort(nullptr), bSweep(false), SweepMesh(nullptr),
-                               bShowTan(false), bShowInward(false), bShowNormal(false), bShowBiNormal(false)
+                               bShowTan(false), bShowInward(false), bShowNormal(false), bShowBiNormal(false),
+                               bAutoNumSegment(true), NumSegments(4)
 {
     IntersectionTester.Owner = this;
 }
@@ -196,7 +197,7 @@ const char* FBezierCurve::GetTypeNameInString() const
 void FBezierCurve::RenderBezierSegment(FBezierCurveControlPointPrimitive* cp0, FBezierCurveControlPointPrimitive* cp1)
 {
     float dist = cp0->GetDistance(*cp1);
-    int numLineSegments = (int)(dist * 2.0f);
+    int numLineSegments = bAutoNumSegment ? (int)(dist * 2.0f) : NumSegments;
     float tStep = 1.0f / (float)numLineSegments;
     for (int i = 0; i < numLineSegments; i++)
     {
@@ -245,7 +246,7 @@ void FBezierCurve::GenerateSweepMesh(FBezierCurveControlPointPrimitive* cp0, FBe
     LOGDEBUG("Generating new mesh for curve\n");
 
     float dist = cp0->GetDistance(*cp1);
-    int numLineSegments = (int)(dist * 2.0f);
+    int numLineSegments = bAutoNumSegment ? (int)(dist * 2.0f) : NumSegments;
     float tStep = 1.0f / (float)numLineSegments;
     for (int i = 0; i < numLineSegments; i++)
     {
@@ -306,6 +307,11 @@ void FBezierCurve::Render()
 
 void FBezierCurve::ImGuiUpdate(FInteractionSystem* interactionSystem)
 {
+    ImGui::Checkbox("Auto-Segmentation", &bAutoNumSegment);
+    if (!bAutoNumSegment)
+    {
+        ImGui::DragInt("Segments", &NumSegments, 0.1f, 1, 128);
+    }
     ImGui::Checkbox("Sweep", &bSweep);
     ImGui::Checkbox("Show Tangent", &bShowTan);
     ImGui::Checkbox("Show Inward", &bShowInward);
