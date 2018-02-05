@@ -14,8 +14,6 @@ class FCameraWithPivot
 public:
     FCameraWithPivot()
     {
-        CameraPivot.AddRef();
-        CameraTransform.AddRef();
         CameraPivot.AddChild(&CameraTransform);
         Camera.SetZFar(100.f);
     }

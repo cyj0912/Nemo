@@ -39,7 +39,6 @@ class FTransformComponent
 public:
     FTransformComponent()
     {
-        TransformNode.AddRef();
     }
 
     FNode& GetTransformNode()

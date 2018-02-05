@@ -187,6 +187,11 @@ public:
         TransformNode->AddRef();
     }
 
+    ~FTranslateGizmo()
+    {
+        TransformNode->Release();
+    }
+
     FNode& GetTransformNode()
     {
         return *TransformNode;

@@ -46,7 +46,8 @@ class FRefCount
 {
 	mutable int RefCount;
 protected:
-	FRefCount() : RefCount(0) {}
+	//Reference count starts at 1
+	FRefCount() : RefCount(1) {}
 public:
 	virtual ~FRefCount() = default;
 
@@ -121,7 +122,7 @@ public:
 		other._ptr = nullptr;
 	}
 
-	TRefPtr(T* ptr, bool addRef = true) : _ptr(ptr)
+	TRefPtr(T* ptr, bool addRef = false) : _ptr(ptr)
 	{
 		if (_ptr && addRef)
 			_ptr->AddRef();
