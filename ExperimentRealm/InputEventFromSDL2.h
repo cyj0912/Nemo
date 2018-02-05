@@ -46,9 +46,13 @@ FMouseButtonEvent ConvertMouseButtonEvent(const SDL_MouseButtonEvent& e)
 FMouseWheelEvent ConvertMouseWheelEvent(const SDL_MouseWheelEvent& e)
 {
     FMouseWheelEvent result;
-    static_assert(sizeof(FMouseWheelEvent) == sizeof(SDL_MouseWheelEvent),
-		"FMouseWheelEvent is not the same size as SDL_MouseWheelEvent");
-    memcpy(&result, &e, sizeof(result));
+    result.type = e.type;
+    result.timestamp = e.timestamp;
+    result.windowID = e.windowID;
+    result.which = e.which;
+    result.WheelX = e.x;
+    result.WheelY = e.y;
+    result.direction = e.direction;
     return result;
 }
 

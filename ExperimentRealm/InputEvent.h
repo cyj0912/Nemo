@@ -84,8 +84,10 @@ struct FMouseWheelEvent
     uint32_t timestamp;
     uint32_t windowID;
     uint32_t which;
-    int32_t x;
-    int32_t y;
+    int32_t X;
+    int32_t Y;
+    int32_t WheelX;
+    int32_t WheelY;
     uint32_t direction;
 };
 

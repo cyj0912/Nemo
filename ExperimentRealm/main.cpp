@@ -10,6 +10,7 @@
 #include "Gizmo.h"
 #include "BezierCurve.h"
 #include "InteractionSystem.h"
+#include "NodeGraph.h"
 
 #include <Timeline.h>
 #include <Platform.h>
@@ -787,6 +788,9 @@ private:
 };
 
 FSkyboxRenderComponent* testSkybox;
+NGCanvas* testCanvas;
+NGBaseNode* testBaseNode;
+NGView* testNodeGraphView;
 
 void myGlSetup(SDL_Window* window)
 {
@@ -830,6 +834,16 @@ void myGlSetup(SDL_Window* window)
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->AddFontFromFileTTF(GResourceManager.FindFile("Roboto-Light.ttf").c_str(), 20.0f);
     io.Fonts->AddFontDefault();
+
+    testCanvas = new NGCanvas();
+    testCanvas->Init();
+    testBaseNode = new NGBaseNode(testCanvas);
+    testBaseNode->SetPosition(200.f, 0.f);
+    new NGBaseNode(testCanvas);
+    testNodeGraphView = new NGView();
+    testNodeGraphView->Init(vg);
+    testNodeGraphView->SetPositionOnScreen({300.0f, 300.0f});
+    metaInputHandler->Insert(testNodeGraphView);
 }
 
 //Update and render, returns true if quitting
@@ -865,20 +879,6 @@ bool myUpdateAndRender(SDL_Window* window)
 	sprintf(fpsText, "clk: %d, frm: %lld, fps: %f", GTimeline.NowMilliSec(), frameCount, fps);
 #endif
 
-    nvgBeginFrame(vg, 1600, 900, 1.0f);
-    nvgFontSize(vg, 32.0f);
-    nvgFontFace(vg, "sans");
-    nvgTextAlign(vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
-
-    nvgFontBlur(vg, 2);
-    nvgFillColor(vg, nvgRGBA(0, 0, 0, 128));
-    nvgText(vg, textX, textY + 1, fpsText, nullptr);
-
-    nvgFontBlur(vg, 0);
-    nvgFillColor(vg, nvgRGBA(220, 220, 220, 160));
-    nvgText(vg, textX, textY, fpsText, nullptr);
-    nvgEndFrame(vg);
-
     ImGui_ImplSdlGL3_NewFrame(window);
     {
         ImGui::Text("Welcome to Toby's Workbench!");
@@ -900,6 +900,22 @@ bool myUpdateAndRender(SDL_Window* window)
 
     ImGui::Render();
 
+    nvgBeginFrame(vg, 1600, 900, 1.0f);
+    nvgFontSize(vg, 32.0f);
+    nvgFontFace(vg, "sans");
+    nvgTextAlign(vg, NVG_ALIGN_LEFT | NVG_ALIGN_TOP);
+
+    nvgFontBlur(vg, 2);
+    nvgFillColor(vg, nvgRGBA(0, 0, 0, 128));
+    nvgText(vg, textX, textY + 1, fpsText, nullptr);
+
+    nvgFontBlur(vg, 0);
+    nvgFillColor(vg, nvgRGBA(220, 220, 220, 160));
+    nvgText(vg, textX, textY, fpsText, nullptr);
+
+    testCanvas->Paint(testNodeGraphView);
+    nvgEndFrame(vg);
+
     return editorMaster->IsQuitting();
 }
 
@@ -918,6 +934,12 @@ void myGlCleanup()
     delete cameraInputHandler;
     delete editorMaster;
     delete metaInputHandler;
+
+    delete testBaseNode;
+    testCanvas->Shutdown();
+    testNodeGraphView->Shutdown();
+    delete testNodeGraphView;
+    delete testCanvas;
 
     FRayDisplay::RenderStaticDestroy();
     FSkyboxRenderComponent::RenderStaticDestroy();
@@ -955,6 +977,7 @@ int main()
 
     bool quit = false;
     SDL_Event e;
+    int32_t lastMouseX = 0, lastMouseY = 0;
     while (!quit)
     {
         while (SDL_PollEvent(&e))
@@ -968,13 +991,30 @@ int main()
             else if (e.type == SDL_KEYUP && !io.WantCaptureKeyboard)
                 metaInputHandler->KeyReleased(ConvertKeyboardEvent(e.key));
             else if (e.type == SDL_MOUSEMOTION && !io.WantCaptureMouse)
+            {
+                //LOGDEBUG("MouseMotion: %d, %d\n", e.motion.x, e.motion.y);
+                lastMouseX = e.motion.x; lastMouseY = e.motion.y;
                 metaInputHandler->MouseMoved(ConvertMouseMotionEvent(e.motion));
+            }
             else if (e.type == SDL_MOUSEBUTTONDOWN && !io.WantCaptureMouse)
+            {
+                //LOGDEBUG("SDL_MOUSEBUTTONDOWN: %d, %d\n", e.button.x, e.button.y);
+                lastMouseX = e.button.x; lastMouseY = e.button.y;
                 metaInputHandler->MousePressed(ConvertMouseButtonEvent(e.button));
+            }
             else if (e.type == SDL_MOUSEBUTTONUP && !io.WantCaptureMouse)
+            {
+                //LOGDEBUG("SDL_MOUSEBUTTONUP: %d, %d\n", e.button.x, e.button.y);
+                lastMouseX = e.button.x; lastMouseY = e.button.y;
                 metaInputHandler->MouseReleased(ConvertMouseButtonEvent(e.button));
+            }
             else if (e.type == SDL_MOUSEWHEEL && !io.WantCaptureMouse)
-                metaInputHandler->MouseWheelRolled(ConvertMouseWheelEvent(e.wheel));
+            {
+                //LOGDEBUG("MouseWheelRolled: %d, %d\n", lastMouseX, lastMouseY);
+                auto event = ConvertMouseWheelEvent(e.wheel);
+                event.X = lastMouseX; event.Y = lastMouseY;
+                metaInputHandler->MouseWheelRolled(event);
+            }
         }
         quit = myUpdateAndRender(window) || quit;
         SDL_GL_SwapWindow(window);
