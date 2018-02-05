@@ -1,4 +1,5 @@
 #pragma once
+#include "SceneNode.h"
 
 #include <BoundingBox.h>
 
@@ -15,6 +16,11 @@ private:
     BoundingBox Extent;
 };
 
+class FOctreeSceneNode : public FSceneNode
+{
+public:
+};
+
 class FOctreeSceneManager
 {
 public:
@@ -22,6 +28,7 @@ public:
 
 private:
     FOctree* Octree;
+    FOctreeSceneNode* RootNode;
 };
 
 } /* namespace tc */
