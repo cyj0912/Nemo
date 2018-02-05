@@ -37,11 +37,6 @@ public:
 
     float GetDistance(const FBezierCurveControlPointPrimitive& rhs) const;
 
-    void CreateGizmo(FInteractionSystem* system) override
-    {
-        //TODO: Do we really create gizmo?
-    }
-
     IRayIntersectComponent* GetRayIntersectComponent() override
     {
         return &IntersectionTester;
@@ -112,11 +107,6 @@ public:
     void AddControlPointFront(FBezierCurveControlPointPrimitive* cp)
     {
         ControlPoints.push_front(cp);
-    }
-
-    void CreateGizmo(FInteractionSystem* system) override
-    {
-        //No gizmo
     }
 
     IRayIntersectComponent* GetRayIntersectComponent() override

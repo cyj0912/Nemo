@@ -1,25 +1,45 @@
 #pragma once
 #include "InputHandler.h"
 
+#include <Matrix3x4.h>
 #include <UsingStl.h>
 
 namespace tc
 {
 
 class FNode;
-class Vector3;
 class FEntityManager;
 class IRayIntersectComponent;
 class FInteractionSystem;
 class FEditorMaster;
 class FBaseEntity;
+class FTranslateGizmo;
 class FTranslateGizmoInputHandler;
 class FPointTranslateGizmoInputHandler;
+
+enum EGizmoFlags
+{
+    GF_NONE = 0x0,
+    GF_TRANSLATE = 0x1,
+    GF_ROTATE = 0x2,
+    GF_SCALE = 0x4,
+};
 
 class IInteractionComponent
 {
 public:
-    virtual void CreateGizmo(FInteractionSystem* system) = 0;
+    virtual EGizmoFlags GetGizmoFlags()
+    {
+        return GF_NONE;
+    }
+
+    virtual Matrix3x4 QueryPreferredGizmoTransform()
+    {
+        return {};
+    }
+
+    virtual void SetGizmoTransformStart(const FNode& node) {}
+    virtual void UpdateFromGizmoTransform(const FNode& node) {}
     virtual IRayIntersectComponent* GetRayIntersectComponent() = 0;
 };
 
@@ -27,8 +47,9 @@ class FInteractionSystem : public IInputHandler
 {
 public:
     explicit FInteractionSystem(FEntityManager* em)
-            : EntityManager(em), EditorMaster(nullptr), SelectedEntity(nullptr), Gizmo(nullptr),
-              TGIHandler(nullptr), PTGIHandler(nullptr), bAllowMultiSelect(false)
+            : EntityManager(em), EditorMaster(nullptr), MainSelection(nullptr),
+              TranslateGizmoInputHandler(nullptr), bAllowMultiSelect(false),
+              TranslateGizmoBasis(nullptr), TranslateGizmo(nullptr)
     {
     }
 
@@ -46,22 +67,26 @@ public:
 
     bool KeyReleased(const FKeyboardEvent& evt) override;
 
+    bool MouseMoved(const FMouseMotionEvent& evt) override;
+
     bool MousePressed(const FMouseButtonEvent& evt) override;
 
-    void CreateNodeTranslateGizmo(FNode* property);
+    bool MouseReleased(const FMouseButtonEvent& evt) override;
 
-    void CreatePointTranslateGizmo(Vector3* property);
+    void CreateGizmoFromSelections();
 
-    void RemoveGizmos();
+    void UpdateGizmo();
+
+    void RemoveGizmo();
 
     void ImGuiUpdate();
 
-    FBaseEntity* GetSelectedEntity() const
+    FBaseEntity* GetMainSelection() const
     {
-        return SelectedEntity;
+        return MainSelection;
     }
 
-    const set<FBaseEntity*>& GetSelectedEntities() const
+    const vector<FBaseEntity*>& GetSelectedEntities() const
     {
         return SelectedEntities;
     }
@@ -69,20 +94,21 @@ public:
 protected:
     bool IsEntityInSelection(FBaseEntity* entity)
     {
-        return entity == SelectedEntity || SelectedEntities.find(entity) != SelectedEntities.end();
+        return std::find(SelectedEntities.begin(), SelectedEntities.end(), entity) != SelectedEntities.end();
     }
 
 private:
     FEntityManager* EntityManager;
     FEditorMaster* EditorMaster;
 
-    FBaseEntity* SelectedEntity;
-    set<FBaseEntity*> SelectedEntities;
-    FBaseEntity* Gizmo;
-    FTranslateGizmoInputHandler* TGIHandler;
-    FPointTranslateGizmoInputHandler* PTGIHandler;
+    FBaseEntity* MainSelection;
+    vector<FBaseEntity*> SelectedEntities;
 
     bool bAllowMultiSelect;
+
+    FNode* TranslateGizmoBasis;
+    FTranslateGizmo* TranslateGizmo;
+    FTranslateGizmoInputHandler* TranslateGizmoInputHandler;
 };
 
 } /* namespace tc */

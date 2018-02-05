@@ -25,8 +25,21 @@ bool FInteractionSystem::KeyReleased(const FKeyboardEvent& evt)
     return false;
 }
 
+bool FInteractionSystem::MouseMoved(const FMouseMotionEvent& evt)
+{
+    if (TranslateGizmoInputHandler && TranslateGizmoInputHandler->MouseMoved(evt))
+    {
+        UpdateGizmo();
+        return true;
+    }
+    return false;
+}
+
 bool FInteractionSystem::MousePressed(const FMouseButtonEvent& evt)
 {
+    if (TranslateGizmoInputHandler && TranslateGizmoInputHandler->MousePressed(evt))
+        return true;
+
     if (evt.button == EMouseButton::Left)
     {
         auto worldRay = EditorMaster->GetViewPort()->GetRayTo(evt.x, evt.y);
@@ -41,6 +54,7 @@ bool FInteractionSystem::MousePressed(const FMouseButtonEvent& evt)
             if (!rayTestComp)
                 continue;
             float distance = rayTestComp->RayHitDistance(worldRay);
+            //LOGDEBUG("%s %g\n", dynamic_cast<FBaseEntity*>(interactComp)->GetTypeNameInString(), distance);
             if(distance < minHitDistance)
             {
                 hitEntity = dynamic_cast<FBaseEntity*>(interactComp);
@@ -49,75 +63,114 @@ bool FInteractionSystem::MousePressed(const FMouseButtonEvent& evt)
             }
         }
 
-        FBaseEntity* originalSelection = SelectedEntity;
+        if (IsEntityInSelection(hitEntity))
+        {
+            //Already selected, do nothing
+            return false;
+        }
 
         if (hitEntity)
         {
+            UpdateGizmo();
+            RemoveGizmo();
             if (bAllowMultiSelect)
             {
-                if (!IsEntityInSelection(hitEntity))
-                {
-                    if (SelectedEntity)
-                        SelectedEntities.insert(hitEntity);
-                    else
-                        SelectedEntity = hitEntity;
-                }
+                SelectedEntities.push_back(hitEntity);
+                if (!MainSelection)
+                    MainSelection = hitEntity;
             }
             else
             {
-                SelectedEntity = hitEntity;
                 SelectedEntities.clear();
+                SelectedEntities.push_back(hitEntity);
+                MainSelection = hitEntity;
             }
+            CreateGizmoFromSelections();
+            return true;
         }
         else
         {
-            SelectedEntity = nullptr;
+            UpdateGizmo();
+            RemoveGizmo();
+            MainSelection = nullptr;
             SelectedEntities.clear();
+            //Should return true or false?
         }
-
-        //TODO
-        //handle gizmo creation/destruction
-        //RemoveGizmos();
-        //hitEntityIaComp->CreateGizmo(this);
     }
     return false;
 }
 
-void FInteractionSystem::CreateNodeTranslateGizmo(FNode* property)
+bool FInteractionSystem::MouseReleased(const FMouseButtonEvent& evt)
 {
-    auto gizmo = new FTranslateGizmo(property);
-    EditorMaster->InsertRenderAndInit(gizmo);
-    TGIHandler = new FTranslateGizmoInputHandler(gizmo, EditorMaster->GetViewPort());
-    Gizmo = gizmo;
+    return TranslateGizmoInputHandler && TranslateGizmoInputHandler->MouseReleased(evt);
 }
 
-void FInteractionSystem::CreatePointTranslateGizmo(Vector3* property)
+void FInteractionSystem::CreateGizmoFromSelections()
 {
-    auto gizmo = new FPointTranslateGizmo(property);
-    EditorMaster->InsertRenderAndInit(gizmo);
-    PTGIHandler = new FPointTranslateGizmoInputHandler(gizmo, EditorMaster->GetViewPort());
-    Gizmo = gizmo;
+    Vector3 basisTranslation;
+    int numBases = 0;
+    for (auto* pEntity : SelectedEntities)
+    {
+        auto* interaction = dynamic_cast<IInteractionComponent*>(pEntity);
+        if (interaction->GetGizmoFlags() & GF_TRANSLATE)
+        {
+            basisTranslation += interaction->QueryPreferredGizmoTransform().Translation();
+            numBases++;
+        }
+    }
+    if (numBases == 0)
+        return;
+
+    basisTranslation /= (float)numBases;
+    TranslateGizmoBasis = new FNode();
+    TranslateGizmoBasis->SetTranslation(basisTranslation);
+    TranslateGizmo = new FTranslateGizmo(TranslateGizmoBasis);
+    EditorMaster->InsertRenderAndInit(TranslateGizmo);
+    TranslateGizmoInputHandler = new FTranslateGizmoInputHandler(TranslateGizmo, EditorMaster->GetViewPort());
+
+    for (auto* pEntity : SelectedEntities)
+    {
+        auto* interaction = dynamic_cast<IInteractionComponent*>(pEntity);
+        interaction->SetGizmoTransformStart(*TranslateGizmoBasis);
+    }
 }
 
-void FInteractionSystem::RemoveGizmos()
+void FInteractionSystem::UpdateGizmo()
 {
-    auto* renderComp = dynamic_cast<IRenderComponent*>(Gizmo);
-    if (renderComp)
-        renderComp->RenderDestroy();
-    delete Gizmo;
-    delete TGIHandler;
-    delete PTGIHandler;
+    if (TranslateGizmoBasis)
+    {
+        for (auto* pEntity : SelectedEntities)
+        {
+            auto* interaction = dynamic_cast<IInteractionComponent*>(pEntity);
+            interaction->UpdateFromGizmoTransform(*TranslateGizmoBasis);
+        }
+    }
+}
+
+void FInteractionSystem::RemoveGizmo()
+{
+    delete TranslateGizmoInputHandler;
+    TranslateGizmoInputHandler = nullptr;
+    if (TranslateGizmo)
+    {
+        TranslateGizmo->RenderDestroy();
+        delete TranslateGizmo;
+        TranslateGizmo = nullptr;
+    }
+    delete TranslateGizmoBasis;
+    TranslateGizmoBasis = nullptr;
 }
 
 void FInteractionSystem::ImGuiUpdate()
 {
     ImGui::Begin("Interaction");
     ImGui::Text("Allow Multiselect: %s", bAllowMultiSelect ? "Yes" : "No");
-    ImGui::Text("Selection: %s", SelectedEntity ? SelectedEntity->GetTypeNameInString() : "None");
+    ImGui::Text("Main Selection: %s", MainSelection ? MainSelection->GetTypeNameInString() : "None");
+    ImGui::Text("Selections:");
     for (auto iter = SelectedEntities.begin(); iter != SelectedEntities.end(); iter++)
         ImGui::Text("%s", (*iter)->GetTypeNameInString());
-    if (SelectedEntity)
-        SelectedEntity->ImGuiUpdate(this);
+    if (MainSelection)
+        MainSelection->ImGuiUpdate(this);
     ImGui::End();
 }
 

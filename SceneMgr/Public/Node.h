@@ -97,7 +97,7 @@ public:
 
     void MarkWorldTransformDirtyRecursively();
 
-    Vector3 GetTranslation() const { return Translation; }
+    const Vector3& GetTranslation() const { return Translation; }
 
     void SetTranslation(const Vector3 &value)
     {

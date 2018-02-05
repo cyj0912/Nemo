@@ -123,16 +123,25 @@ void FBezierCurveControlPointPrimitive::ImGuiUpdate(FInteractionSystem* interact
 {
     if (ImGui::Button("Connect Control Points"))
     {
-        if (interactionSystem->GetSelectedEntities().size() == 1)
+        int i = 0;
+        auto& selection = interactionSystem->GetSelectedEntities();
+        auto getNextControlPoint = [&i, selection]()
         {
-            auto* rhs = dynamic_cast<FBezierCurveControlPointPrimitive*>(*interactionSystem->GetSelectedEntities().begin());
-            if (rhs)
-            {
-                auto* curve = new FBezierCurve();
-                curve->AddControlPoint(this);
-                curve->AddControlPoint(rhs);
-                GEditorMaster->RegisterEntity(curve);
-            }
+            FBezierCurveControlPointPrimitive* rhs = nullptr;
+            while (!rhs && i < selection.size())
+                rhs = dynamic_cast<FBezierCurveControlPointPrimitive*>(selection[i++]);
+            return rhs;
+        };
+
+        auto* prev = getNextControlPoint();
+        FBezierCurveControlPointPrimitive* next = nullptr;
+        while ((next = getNextControlPoint()) != nullptr)
+        {
+            auto* curve = new FBezierCurve();
+            curve->AddControlPoint(prev);
+            curve->AddControlPoint(next);
+            GEditorMaster->RegisterEntity(curve);
+            prev = next;
         }
     }
 
@@ -146,7 +155,7 @@ void FBezierCurveControlPointPrimitive::ImGuiUpdate(FInteractionSystem* interact
 
 float FBezierCurveControlPointPrimitive::IntersectionTester::RayHitDistance(const Ray& ray)
 {
-    static const float DISTANCE_THRESHOLD = 0.2f;
+    static const float DISTANCE_THRESHOLD = 0.1f;
     auto testSeg = [=](const Vector3& middle, const Vector3& front)
     {
         const Vector3& origin = middle;
@@ -162,7 +171,11 @@ float FBezierCurveControlPointPrimitive::IntersectionTester::RayHitDistance(cons
             return M_INFINITY;
         if (pointOffset.LengthSquared() > dir.LengthSquared())
             return M_INFINITY;
-        return distance;
+
+        //Calculate distance from origin
+        Vector3 offset = closestPoint - ray.Origin;
+        float offsetOnRay = offset.DotProduct(ray.Direction);
+        return offsetOnRay;
     };
     return Min(testSeg(Owner->MiddlePoint.GetPosition(), Owner->FrontPoint.GetPosition()),
                testSeg(Owner->MiddlePoint.GetPosition(), Owner->BackPoint.GetPosition()));
@@ -323,7 +336,11 @@ float FBezierCurve::IntersectionTester::RayHitDistance(const Ray& ray)
             return M_INFINITY;
         if (pointOffset.LengthSquared() > dir.LengthSquared())
             return M_INFINITY;
-        return distance;
+
+        //Calculate distance from origin
+        Vector3 offset = closestPoint - ray.Origin;
+        float offsetOnRay = offset.DotProduct(ray.Direction);
+        return offsetOnRay;
     };
 
     float minDist = M_INFINITY;

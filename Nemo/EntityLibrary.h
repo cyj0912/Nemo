@@ -2,6 +2,7 @@
 #include "RenderComponent.h"
 #include "EditorMaster.h"
 #include "PrimitiveRenderer.h"
+#include "InteractionSystem.h"
 #include <SceneNode.h>
 #include <Ray.h>
 
@@ -120,7 +121,7 @@ public:
         auto worldToLocal = static_cast<TOwner*>(this)->GetTransformMatrix().Inverse();
         auto localRay = ray.Transformed(worldToLocal);
 
-        BoundingBox bounding = BoundingBox(-0.1f, 0.1f);
+        Sphere bounding = Sphere(Vector3::ZERO, 0.11f);
         float hitDist = localRay.HitDistance(bounding);
         return hitDist;
     }
@@ -148,7 +149,8 @@ public:
 class FPointPrimitive : public FBaseEntity,
                         public FPositionComponent,
                         public TPointRenderComponent<FPointPrimitive>,
-                        public TPointRayIntersectComponent<FPointPrimitive>
+                        public TPointRayIntersectComponent<FPointPrimitive>,
+                        public IInteractionComponent
 {
 public:
     const char* GetTypeNameInString() const override
@@ -156,6 +158,35 @@ public:
         static const char* name = "FPointPrimitive";
         return name;
     }
+
+    EGizmoFlags GetGizmoFlags() override
+    {
+        return GF_TRANSLATE;
+    }
+
+    Matrix3x4 QueryPreferredGizmoTransform() override
+    {
+        return {GetPosition(), Quaternion::IDENTITY, Vector3::ONE};
+    }
+
+    void SetGizmoTransformStart(const FNode& node) override
+    {
+        GizmoTranslateStart = node.GetTranslation();
+    }
+
+    void UpdateFromGizmoTransform(const FNode& node) override
+    {
+        SetPosition(GetPosition() + node.GetTranslation() - GizmoTranslateStart);
+        GizmoTranslateStart = node.GetTranslation();
+    }
+
+    IRayIntersectComponent* GetRayIntersectComponent() override
+    {
+        return this;
+    }
+
+private:
+    Vector3 GizmoTranslateStart;
 };
 
 } /* namespace tc */
