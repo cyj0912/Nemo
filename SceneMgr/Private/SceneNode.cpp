@@ -11,6 +11,42 @@ FNode::FNode()
     SetName("unnamedNode");
 }
 
+FNode::FNode(const FNode& rhs) : Name(rhs.Name), Parent(rhs.Parent), RootNode(rhs.RootNode), Children(),
+                                 Translation(rhs.Translation), Rotation(rhs.Rotation), Scale(rhs.Scale),
+                                 TransformToParentDirty(true), TransformFromParentDirty(true),
+                                 WorldTransformDirty(true), InverseWorldTransformDirty(true)
+{
+}
+
+FNode::FNode(FNode&& rhs) noexcept : Name(std::move(rhs.Name)), Parent(std::move(rhs.Parent)), RootNode(std::move(rhs.RootNode)), Children(std::move(rhs.Children)),
+                            Translation(std::move(rhs.Translation)), Rotation(std::move(rhs.Rotation)), Scale(std::move(rhs.Scale)),
+                            TransformToParentDirty(true), TransformFromParentDirty(true),
+                            WorldTransformDirty(true), InverseWorldTransformDirty(true)
+{
+}
+
+FNode& FNode::operator=(const FNode& rhs)
+{
+    *this = FNode(rhs);
+    return *this;
+}
+
+FNode& FNode::operator=(FNode&& rhs) noexcept
+{
+    Name = std::move(rhs.Name);
+    Parent = rhs.Parent;
+    RootNode = rhs.RootNode;
+    Children = std::move(rhs.Children);
+    Translation = rhs.Translation;
+    Rotation = rhs.Rotation;
+    Scale = rhs.Scale;
+    TransformToParentDirty = true;
+    TransformFromParentDirty = true;
+    WorldTransformDirty = true;
+    InverseWorldTransformDirty = true;
+    return *this;
+}
+
 void FNode::AddChild(FNode *child)
 {
     TRefPtr<FNode> reference(child, true);
@@ -166,50 +202,6 @@ void FNode::LookAt(const Vector3 &at)
 
 FSceneNode::FSceneNode()
 {
-}
-
-FSceneNode* FSceneNode::CreateChild()
-{
-    auto *node = new FSceneNode();
-    AddChild(node);
-    return node;
-}
-
-FSceneNode* FSceneNode::CreateChild(const string& name)
-{
-    auto *node = new FSceneNode();
-    node->SetName(name);
-    AddChild(node);
-    return node;
-}
-
-void FSceneNode::Attach(FSceneAttachment *attachment)
-{
-    Attachments.insert(TRefPtr<FSceneAttachment>(attachment));
-}
-
-void FSceneNode::Detach(FSceneAttachment *attachment)
-{
-    Attachments.erase(TRefPtr<FSceneAttachment>(attachment));
-}
-
-void FSceneNode::AttachCamera(FCamera* camera)
-{
-    if (AttachedCamera)
-        LOGDEBUG("SceneNode %s, replace attached camera\n", GetName().c_str());
-    AttachedCamera = camera;
-}
-
-void FSceneNode::DetachCamera()
-{
-    AttachedCamera = nullptr;
-}
-
-void FSceneNode::UpdateAttachments()
-{
-    for (auto attachment : Attachments) {
-        //attachment->SetModelTransform(GetTransformToWorld());
-    }
 }
 
 }

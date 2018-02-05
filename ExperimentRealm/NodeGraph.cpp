@@ -126,6 +126,19 @@ void NGBaseNode::Paint(NGView* view)
     nvgFontBlur(vg, 0);
     nvgFillColor(vg, nvgRGBA(220, 220, 220, 160));
     nvgText(vg, x + w / 2, y + 16, GetName(), nullptr);
+
+    NVGpaint knob;
+    float kr = 6.0f;
+    float cx = x + 20.0f;
+    float cy = y + 50.0f;
+
+    knob = nvgLinearGradient(vg, cx, cy - kr, cx, cy + kr, nvgRGBA(255, 255, 255, 64), nvgRGBA(0, 0, 0, 16));
+    nvgBeginPath(vg);
+    nvgCircle(vg, cx, cy, kr);
+    nvgFillColor(vg, nvgRGBA(100, 100, 48, 255));
+    nvgFill(vg);
+    nvgFillPaint(vg, knob);
+    nvgFill(vg);
 }
 
 } /* namespace tc */

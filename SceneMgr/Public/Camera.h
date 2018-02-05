@@ -1,6 +1,5 @@
 #pragma once
 #include "SceneMgrAPI.h"
-#include "SceneAttachment.h"
 #include <Pointer.h>
 #include <Frustum.h>
 #include <Matrix4.h>
@@ -8,7 +7,7 @@
 namespace tc
 {
 
-class SCENEMGR_API FCamera : public FSceneAttachment
+class SCENEMGR_API FCamera
 {
     float ZNear, ZFar, FieldOfViewY, AspectRatio;
     bool bUsesOrthoProjection;

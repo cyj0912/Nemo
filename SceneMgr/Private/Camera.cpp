@@ -1,5 +1,4 @@
 #include "Camera.h"
-#include "SceneNode.h"
 
 namespace tc
 {

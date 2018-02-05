@@ -2,7 +2,7 @@
 #include "SceneMgrAPI.h"
 #include "Camera.h"
 
-#include <Foundation.h>
+#include <UsingStl.h>
 #include <Vector3.h>
 #include <Quaternion.h>
 #include <Matrix3x4.h>
@@ -31,8 +31,9 @@ class SCENEMGR_API FNode : public FRefCount
     FNode *Parent, *RootNode;
     vector<TRefPtr<FNode>> Children;
 
-    Vector3 Translation, Scale;
+    Vector3 Translation;
     Quaternion Rotation;
+    Vector3 Scale;
     mutable Matrix3x4 TransformToParent, TransformFromParent, WorldTransform, InverseWorldTransform;
     mutable bool TransformToParentDirty, TransformFromParentDirty, WorldTransformDirty, InverseWorldTransformDirty;
 
@@ -54,10 +55,14 @@ class SCENEMGR_API FNode : public FRefCount
 
 public:
     FNode();
-    FNode(const FNode &) = delete;
-    FNode(FNode &&) = delete;
-    FNode &operator=(const FNode &) = delete;
-    FNode &operator=(FNode &&) = delete;
+
+    FNode(const FNode& rhs);
+
+    FNode(FNode&& rhs) noexcept;
+
+    FNode& operator= (const FNode& rhs);
+
+    FNode& operator= (FNode&& rhs) noexcept;
 
     string GetName() const { return Name; }
     void SetName(const string &value) { Name = value; }
@@ -164,71 +169,8 @@ public:
 
 class SCENEMGR_API FSceneNode: public FNode
 {
-    set<TRefPtr<FSceneAttachment>> Attachments;
-
-    TRefPtr<FCamera> AttachedCamera;
-
 public:
     FSceneNode();
-
-    FSceneNode* CreateChild();
-    FSceneNode* CreateChild(const string& name);
-
-    void Attach(FSceneAttachment *attachment);
-    void Detach(FSceneAttachment *attachment);
-    void AttachCamera(FCamera* camera);
-    void DetachCamera();
-    FCamera* GetAttachedCamera()
-    {
-        return AttachedCamera;
-    }
-    void UpdateAttachments();
-
-    template<typename Func> void ForEachNodeDeep(Func fn)
-    {
-        fn(this);
-        int limit = CountChildren();
-        for (int i = 0; i < limit; i++)
-        {
-            FNode* child = ChildAt(i);
-            auto* scnNodeChild = static_cast<FSceneNode*>(child);
-            scnNodeChild->ForEachNodeDeep(fn);
-        }
-    }
-
-    template<typename Func> void ForEachAttachment(Func fn)
-    {
-        for (auto attachment : Attachments)
-        {
-            fn(attachment);
-        }
-    }
-
-    template<typename T, typename Func> void ForEachAttachmentOfType(Func fn)
-    {
-        for (auto &attachment : Attachments)
-        {
-            T *ptr = dynamic_cast<T *>(attachment.Get());
-            if (!ptr) {
-                fn(this, ptr);
-            }
-        }
-    }
-
-    template<typename Func> void ForEachAttachmentDeep(Func fn)
-    {
-        for (auto attachment : Attachments)
-        {
-            fn(this, attachment);
-        }
-        int limit = CountChildren();
-        for (int i = 0; i < limit; i++)
-        {
-            FNode* child = ChildAt(i);
-            auto* scnNodeChild = static_cast<FSceneNode*>(child);
-            scnNodeChild->ForEachAttachmentDeep(fn);
-        }
-    }
 };
 
 }
