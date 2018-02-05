@@ -1,6 +1,8 @@
 ﻿#pragma once
 #include <Foundation.h>
-#include <glad/glad.h>
+
+#include "OpenGL.h"
+
 #include <string>
 
 namespace tc

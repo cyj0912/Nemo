@@ -1,5 +1,6 @@
 #pragma once
 #include "SceneNode.h"
+#include "SceneManager.h"
 #include "Geometry.h"
 
 #include <BoundingBox.h>
@@ -92,7 +93,7 @@ public:
     BoundingBox LocalAABB, WorldAABB;
 };
 
-class FOctreeSceneManager
+class FOctreeSceneManager : public FSceneManager
 {
 public:
     FOctreeSceneManager();
