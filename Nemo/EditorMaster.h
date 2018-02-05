@@ -46,10 +46,6 @@ public:
         return IInputHandler::MouseWheelRolled(evt);
     }
 
-    void CreateGizmoFor(FBaseEntity* entity);
-
-    void RemoveGizmos();
-
     void ToggleWireframe();
 
     bool IsWireframe() const;
@@ -80,13 +76,6 @@ public:
 private:
     bool bWireframe;
     FDummyRenderComponent RenderComponentListHead;
-
-    FBaseEntity* SelectedEntity;
-
-    FTranslateGizmo* TranslateGizmo;
-    FTranslateGizmoInputHandler* TranslateGizmoInputHandler;
-    FPointTranslateGizmo* PointTranslateGizmo;
-    FPointTranslateGizmoInputHandler* PointTranslateGizmoInputHandler;
 
     bool bToQuit;
 

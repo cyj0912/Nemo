@@ -359,9 +359,7 @@ public:
     }
 };
 
-FEditorMaster::FEditorMaster() : bWireframe(false), SelectedEntity(nullptr),TranslateGizmo(nullptr),
-                  TranslateGizmoInputHandler(nullptr), PointTranslateGizmo(nullptr),
-                  PointTranslateGizmoInputHandler(nullptr), bToQuit(false)
+FEditorMaster::FEditorMaster() : bWireframe(false), bToQuit(false)
 {
     MainInputHandler = new FMulticastInputHandler();
     EntityManager = new FEntityManager();
@@ -405,85 +403,7 @@ bool FEditorMaster::MousePressed(const FMouseButtonEvent& evt)
 
     if (MainInputHandler->MousePressed(evt))
         return true;
-
-    if (evt.button == EMouseButton::Left)
-    {
-        auto worldRay = GetViewPort()->GetRayTo(evt.x, evt.y);
-
-        //The closer entity wins if contested
-        FBaseEntity* NewSelectedEntity = nullptr;
-        float minHitDistance = M_INFINITY;
-        for (auto* entity : EntityManager->GetComponents<IRayIntersectComponent>())
-        {
-            float distance = entity->RayHitDistance(worldRay);
-            if(distance < minHitDistance)
-            {
-                NewSelectedEntity = dynamic_cast<FBaseEntity*>(entity);
-                minHitDistance = distance;
-            }
-        }
-
-        if (NewSelectedEntity)
-        {
-            if (NewSelectedEntity != SelectedEntity)
-            {
-                RemoveGizmos();
-                CreateGizmoFor(NewSelectedEntity);
-                SelectedEntity = NewSelectedEntity;
-                return true;
-            }
-
-            //Selected the original selected, nothing happens
-            return false;
-        }
-
-        //When the new selection is nothing
-        if (NewSelectedEntity != SelectedEntity)
-        {
-            RemoveGizmos();
-            SelectedEntity = NewSelectedEntity;
-        }
-    }
     return false;
-}
-
-void FEditorMaster::CreateGizmoFor(FBaseEntity* entity)
-{
-    if (dynamic_cast<FBoxPrimitive*>(entity))
-    {
-        auto* box = dynamic_cast<FBoxPrimitive*>(entity);
-        TranslateGizmo = new FTranslateGizmo(&box->GetTransformNode());
-        TranslateGizmo->RenderInit(renderWorld);
-        TranslateGizmoInputHandler = new FTranslateGizmoInputHandler(TranslateGizmo, GetViewPort());
-        MainInputHandler->Insert(TranslateGizmoInputHandler);
-    }
-    else if (dynamic_cast<FPointPrimitive*>(entity))
-    {
-        auto* point = dynamic_cast<FPointPrimitive*>(entity);
-        PointTranslateGizmo = new FPointTranslateGizmo(&point->GetPosition());
-        PointTranslateGizmo->RenderInit(renderWorld);
-        PointTranslateGizmoInputHandler = new FPointTranslateGizmoInputHandler(PointTranslateGizmo, GetViewPort());
-        MainInputHandler->Insert(PointTranslateGizmoInputHandler);
-    }
-}
-
-void FEditorMaster::RemoveGizmos()
-{
-    delete TranslateGizmoInputHandler;
-    TranslateGizmoInputHandler = nullptr;
-
-    if (TranslateGizmo)
-        TranslateGizmo->RenderDestroy();
-    delete TranslateGizmo;
-    TranslateGizmo = nullptr;
-
-    delete PointTranslateGizmoInputHandler;
-    PointTranslateGizmoInputHandler = nullptr;
-
-    if (PointTranslateGizmo)
-        PointTranslateGizmo->RenderDestroy();
-    delete PointTranslateGizmo;
-    PointTranslateGizmo = nullptr;
 }
 
 void FEditorMaster::ToggleWireframe()
@@ -520,11 +440,6 @@ void FEditorMaster::ImGuiUpdate()
     }
 
     ImGui::Begin("Primitives");
-    ImGui::Text("Current selection:");
-    if (SelectedEntity)
-        ImGui::Text("%s", SelectedEntity->GetTypeNameInString());
-    else
-        ImGui::Text("<None>");
     ImGui::Text("You can add primitives with this panel");
     if (ImGui::Button("Box"))
     {
@@ -573,18 +488,10 @@ void FEditorMaster::Render()
 
     glDisable(GL_DEPTH_TEST);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    if (TranslateGizmo)
-        TranslateGizmo->Render();
-
-    if (PointTranslateGizmo)
-        PointTranslateGizmo->Render();
 }
 
 void FEditorMaster::RenderDestroy()
 {
-    RemoveGizmos();
-
     auto* item = RenderComponentListHead.NextRenderComponent;
     while (item)
     {
