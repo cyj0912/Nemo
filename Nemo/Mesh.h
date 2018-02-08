@@ -17,6 +17,8 @@ public:
 
     void AddTriangle(const Vector3& a, const Vector3& b, const Vector3& c);
 
+    void AddQuad(const Vector3& a, const Vector3& b, const Vector3& c, const Vector3& d);
+
     // Public mesh data
     vector<float> VertexBuffer; //x, y, z
     vector<float> NormalBuffer; //x, y, z

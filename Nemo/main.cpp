@@ -527,6 +527,8 @@ void FEditorMaster::InsertRenderAndInit(IRenderComponent* comp)
 
 void FEditorMaster::RegisterEntity(FBaseEntity* entity, bool isSubEntity)
 {
+    if (EntityManager->IsEntityRegistered(entity))
+        return;
     EntityManager->RegisterEntity(entity, isSubEntity);
     auto* renderComp = dynamic_cast<IRenderComponent*>(entity);
     if (renderComp)
@@ -726,7 +728,7 @@ void myGlSetup(SDL_Window* window)
 
     editorMaster->RenderInit();
 
-    vg = nvgCreateGL3(NVG_ANTIALIAS | NVG_STENCIL_STROKES | NVG_DEBUG);
+    vg = nvgCreateGL3(NVG_STENCIL_STROKES | NVG_DEBUG);
 
     int fontResult;
     fontResult = nvgCreateFont(vg, "sans", GResourceManager.FindFile("Roboto-Regular.ttf").c_str());

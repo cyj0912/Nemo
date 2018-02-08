@@ -34,4 +34,12 @@ void FEntityManager::UnregisterEntity(FBaseEntity* entity)
         Entities.erase(iter);
 }
 
+bool FEntityManager::IsEntityRegistered(FBaseEntity* entity) const
+{
+    auto iter = Entities.find(entity);
+    if (iter != Entities.end())
+        return true;
+    return false;
+}
+
 } /* namespace tc */

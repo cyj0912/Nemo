@@ -3,7 +3,7 @@
 namespace tc
 {
 
-void FUVSphereModelGenerator::Generate(int segments, int rings, bool generateUV)
+FStaticMesh* FUVSphereModelGenerator::Generate(int segments, int rings, float radius, bool generateUV)
 {
     auto sphericalToCartesian = [](float r, float theta, float phi) -> Vector3
     {

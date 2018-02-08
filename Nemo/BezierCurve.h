@@ -14,9 +14,21 @@ namespace tc
 
 class FStaticMesh;
 
+//Not in the right place. Fix later.
+/**
+ * Defines cross section(s) in the xy plane.
+ */
+class FCrossSection
+{
+public:
+
+private:
+};
+
 class FBezierCurveControlPointPrimitive : public FBaseEntity,
                                           public IRenderComponent,
-                                          public IInteractionComponent
+                                          public IInteractionComponent,
+                                          public IPropertyChangeListener
 {
 public:
     FBezierCurveControlPointPrimitive();
@@ -59,10 +71,14 @@ public:
         return BackPoint;
     }
 
+    void OnPropertyChanged(IPropertyOwner* who, int which) override;
+
 private:
     FPointPrimitive FrontPoint;
     FPointPrimitive MiddlePoint;
+    Vector3 PrevMiddlePointPosition;
     FPointPrimitive BackPoint;
+    bool bLockTangent;
 
     //Don't inherit this interface so that EditorMaster doesn't find out about it
     class IntersectionTester : public IRayIntersectComponent
@@ -73,14 +89,14 @@ private:
     } IntersectionTester;
 };
 
-class FBezierCurve : public FBaseEntity,
+class FBezierSpline : public FBaseEntity,
                      public IRenderComponent,
                      public IInteractionComponent
 {
 public:
-    FBezierCurve();
+    FBezierSpline();
 
-    ~FBezierCurve() override;
+    ~FBezierSpline() override;
 
     const char* GetTypeNameInString() const override;
 
@@ -93,6 +109,8 @@ public:
 
     void GenerateSweepMesh(FBezierCurveControlPointPrimitive* cp0, FBezierCurveControlPointPrimitive* cp1);
 
+    void GenerateSweepFrames();
+
     void Render() override;
 
     void RenderDestroy() override
@@ -101,11 +119,17 @@ public:
 
     void AddControlPoint(FBezierCurveControlPointPrimitive* cp)
     {
+        auto iter = std::find(ControlPoints.begin(), ControlPoints.end(), cp);
+        if (iter != ControlPoints.end())
+            assert(0 == "Adding the same control point");
         ControlPoints.push_back(cp);
     }
 
     void AddControlPointFront(FBezierCurveControlPointPrimitive* cp)
     {
+        auto iter = std::find(ControlPoints.begin(), ControlPoints.end(), cp);
+        if (iter != ControlPoints.end())
+            assert(0 == "Adding the same control point");
         ControlPoints.push_front(cp);
     }
 
@@ -125,12 +149,21 @@ private:
     bool bAutoNumSegment;
     int NumSegments;
 
+    struct FSweepFrame
+    {
+        FBezierCurveControlPointPrimitive* ControlPoint0;
+        FBezierCurveControlPointPrimitive* ControlPoint1;
+        Matrix3x4 Basis;
+        float VarT;
+    };
+    PODVector<FSweepFrame> SweepFrames;
+
     //Don't inherit this interface so that EditorMaster doesn't find out about it
     class IntersectionTester : public IRayIntersectComponent
     {
     public:
         float RayHitDistance(const Ray& ray) override;
-        FBezierCurve* Owner;
+        FBezierSpline* Owner;
     } IntersectionTester;
 };
 

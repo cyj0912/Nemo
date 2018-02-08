@@ -5,6 +5,7 @@
 #include "InteractionSystem.h"
 #include <SceneNode.h>
 #include <Ray.h>
+#include <PODVector.h>
 
 namespace tc
 {
@@ -61,7 +62,29 @@ private:
     FNode TransformNode;
 };
 
-class FPositionComponent
+class IPropertyChangeListener;
+
+class IPropertyOwner
+{
+public:
+    virtual ~IPropertyOwner() = default;
+    virtual void AddPropertyChangeListener(IPropertyChangeListener*) = 0;
+    virtual void RemovePropertyChangeListener(IPropertyChangeListener*) = 0;
+};
+
+class IPropertyChangeListener
+{
+public:
+    virtual ~IPropertyChangeListener() = default;
+
+    /*
+     * This is not a well thought API.
+     * Is `which` sufficient to identify the property?
+     */
+    virtual void OnPropertyChanged(IPropertyOwner* who, int which) = 0;
+};
+
+class FPositionComponent : public IPropertyOwner
 {
 public:
     Matrix3x4 GetTransformMatrix() const
@@ -82,10 +105,30 @@ public:
     void SetPosition(const Vector3& v)
     {
         Position = v;
+        NotifyAll(0);
+    }
+
+    void AddPropertyChangeListener(IPropertyChangeListener* listener) override
+    {
+        PropertyListeners.Push(listener);
+    }
+
+    void RemovePropertyChangeListener(IPropertyChangeListener* listener) override
+    {
+        PropertyListeners.Remove(listener);
+    }
+
+    void NotifyAll(int which)
+    {
+        for (auto* listener : PropertyListeners)
+        {
+            listener->OnPropertyChanged(this, which);
+        }
     }
 
 protected:
     Vector3 Position;
+    PODVector<IPropertyChangeListener*> PropertyListeners;
 };
 
 class IRayIntersectComponent

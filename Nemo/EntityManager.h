@@ -48,6 +48,8 @@ public:
         return result;
     }
 
+    bool IsEntityRegistered(FBaseEntity* entity) const;
+
 private:
     set<FBaseEntity*> Entities;
     unordered_map<FBaseEntity*, bool> MapIsSubEntity;

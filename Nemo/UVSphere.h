@@ -5,10 +5,12 @@
 namespace tc
 {
 
+class FStaticMesh;
+
 class FUVSphereModelGenerator
 {
 public:
-    void Generate(int segments, int rings, bool generateUV);
+    static FStaticMesh* Generate(int segments, int rings, float radius = 1.0f, bool generateUV = true);
 };
 
 } /* namespace tc */
