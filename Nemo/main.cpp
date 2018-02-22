@@ -11,6 +11,7 @@
 #include "BezierCurve.h"
 #include "InteractionSystem.h"
 #include "NodeGraph.h"
+#undef GetCurrentTime
 #include "SimulationTime.h"
 
 #include <Timeline.h>
@@ -875,7 +876,8 @@ bool myUpdateAndRender(SDL_Window* window)
     char fpsText[128];
 
 #if TC_OS == TC_OS_WINDOWS_NT
-	sprintf_s(fpsText, "clk: %d, frm: %lld, fps: %f", GTimeline.NowMilliSec(), frameCount, fps);
+    sprintf_s(fpsText, "clk: %d, frm: %lld, fps: %f, elps: %d, sim: %llu",
+              GTimeline.NowMilliSec(), frameCount, fps, elapsedMsec, GSimulationTime.GetCurrentTime());
 #else
 	sprintf(fpsText, "clk: %d, frm: %lld, fps: %f, elps: %d, sim: %llu",
             GTimeline.NowMilliSec(), frameCount, fps, elapsedMsec, GSimulationTime.GetCurrentTime());
@@ -955,6 +957,7 @@ void myGlCleanup()
 #endif
 int main()
 {
+	SetProcessDPIAware();
     GResourceManager.Init();
 
     SDL_Init(SDL_INIT_VIDEO);
