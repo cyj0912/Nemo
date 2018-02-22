@@ -214,4 +214,13 @@ void FNode::LookAt(const Vector3 &at)
     SetRotation(newRot);
 }
 
+void FNode::SetIdentity()
+{
+    Translation = Vector3::ZERO;
+    Rotation = Quaternion::IDENTITY;
+    Scale = Vector3::ONE;
+    TransformToParentDirty = true;
+    MarkWorldTransformDirtyRecursively();
+}
+
 } /* namespace tc */

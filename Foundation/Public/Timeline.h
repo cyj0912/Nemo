@@ -18,8 +18,10 @@ public:
     void Init();
 
     uint64_t Now() const;
-    int NowMilliSec() const;
+    uint32_t NowMilliSec() const;
     double GetFrequency() const;
+
+    uint32_t ConvertToMilliSec(uint64_t time) const;
 
     void Pause();
     void UnPause();

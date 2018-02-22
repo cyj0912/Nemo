@@ -76,7 +76,7 @@ public:
     {\
         if (ptr)\
         {\
-            const_cast<FRefCount*>(static_cast<const FRefCount*>(ptr))->AddRef();\
+            const_cast<T*>(static_cast<const T*>(ptr))->AddRef();\
         }\
     \
     } while (0);
@@ -87,7 +87,7 @@ public:
     {\
         if (ptr)\
         {\
-            const_cast<FRefCount*>(static_cast<const FRefCount*>(ptr))->Release();\
+            const_cast<T*>(static_cast<const T*>(ptr))->Release();\
         }\
     \
     } while (0);
@@ -98,7 +98,7 @@ public:
     {\
         if (ptr)\
         {\
-            const_cast<FRefCount*>(static_cast<const FRefCount*>(ptr))->Release();\
+            const_cast<T*>(static_cast<const T*>(ptr))->Release();\
             ptr = nullptr;\
         }\
     \

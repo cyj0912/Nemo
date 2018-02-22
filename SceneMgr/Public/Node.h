@@ -99,7 +99,7 @@ public:
 
     const Vector3& GetTranslation() const { return Translation; }
 
-    void SetTranslation(const Vector3 &value)
+    void SetTranslation(const Vector3& value)
     {
         Translation = value;
         TransformToParentDirty = true;
@@ -111,6 +111,13 @@ public:
         Translation.x_ = x;
         Translation.y_ = y;
         Translation.z_ = z;
+        TransformToParentDirty = true;
+        MarkWorldTransformDirtyRecursively();
+    }
+
+    void Translate(const Vector3& value)
+    {
+        Translation += value;
         TransformToParentDirty = true;
         MarkWorldTransformDirtyRecursively();
     }
@@ -158,6 +165,8 @@ public:
     }
 
     void LookAt(const Vector3 &at);
+
+    void SetIdentity();
 };
 
 } /* namespace tc */

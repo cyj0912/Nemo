@@ -142,7 +142,7 @@ public:
 
 private:
     FViewPort* ViewPort;
-    deque<FBezierCurveControlPointPrimitive*, std::allocator<FBezierCurveControlPointPrimitive*>> ControlPoints;
+    deque<FBezierCurveControlPointPrimitive*> ControlPoints;
     bool bSweep;
     FStaticMesh* SweepMesh;
     bool bShowTan, bShowInward, bShowNormal, bShowBiNormal;

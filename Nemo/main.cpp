@@ -11,6 +11,7 @@
 #include "BezierCurve.h"
 #include "InteractionSystem.h"
 #include "NodeGraph.h"
+#include "SimulationTime.h"
 
 #include <Timeline.h>
 #include <Platform.h>
@@ -47,6 +48,8 @@ FEditorMaster* GEditorMaster;
 
 FMetaInputHandler* metaInputHandler;
 FHighResolutionClock GTimeline;
+uint64_t StartTime;
+FSimulationTime GSimulationTime;
 FViewPort* renderWorld;
 FCameraWithPivot* cameraWithPivot;
 FCameraInputHandler* cameraInputHandler;
@@ -61,11 +64,6 @@ namespace tc
 
 class FCameraInputHandler : public IInputHandler
 {
-    FCameraWithPivot* Camera;
-    bool AcceptLMBRotate;
-    bool MouseCurrentlyOrbit;
-    bool MouseInFpsView;
-    int MouseLastX, MouseLastY;
 public:
     explicit FCameraInputHandler(FCameraWithPivot* Camera) : Camera(Camera), AcceptLMBRotate(false)
     , MouseCurrentlyOrbit(false), MouseInFpsView(false), MouseLastX(0), MouseLastY(0)
@@ -76,6 +74,22 @@ public:
     {
         if (evt.keysym.sym == EKeyCode::Rgui || evt.keysym.sym == EKeyCode::Lalt)
             AcceptLMBRotate = true;
+        else if (evt.keysym.sym == EKeyCode::W)
+        {
+            IsWalkingForward = true;
+        }
+        else if (evt.keysym.sym == EKeyCode::A)
+        {
+            IsWalkingLeft = true;
+        }
+        else if (evt.keysym.sym == EKeyCode::S)
+        {
+            IsWalkingBack = true;
+        }
+        else if (evt.keysym.sym == EKeyCode::D)
+        {
+            IsWalkingRight = true;
+        }
         return false;
     }
 
@@ -83,6 +97,22 @@ public:
     {
         if (evt.keysym.sym == EKeyCode::Rgui || evt.keysym.sym == EKeyCode::Lalt)
             AcceptLMBRotate = false;
+        else if (evt.keysym.sym == EKeyCode::W)
+        {
+            IsWalkingForward = false;
+        }
+        else if (evt.keysym.sym == EKeyCode::A)
+        {
+            IsWalkingLeft = false;
+        }
+        else if (evt.keysym.sym == EKeyCode::S)
+        {
+            IsWalkingBack = false;
+        }
+        else if (evt.keysym.sym == EKeyCode::D)
+        {
+            IsWalkingRight = false;
+        }
         return false;
     }
 
@@ -105,7 +135,7 @@ public:
             auto deltaX = (float)(evt.x - MouseLastX);
             auto deltaY = (float)(evt.y - MouseLastY);
 
-            //Camera->GetCameraTransform().Yaw(-deltaX * 0.25f, TS_WORLD);
+            Camera->GetCameraTransform().Yaw(-deltaX * 0.25f, TS_WORLD);
             Camera->GetCameraTransform().Pitch(-deltaY * 0.25f);
 
             MouseLastX = evt.x;
@@ -148,8 +178,57 @@ public:
 
     bool MouseWheelRolled(const FMouseWheelEvent& evt) override
     {
-        return IInputHandler::MouseWheelRolled(evt);
+        return false;
     }
+
+    void UpdateWalking(int dt)
+    {
+        if (MouseInFpsView)
+        {
+            Vector3 localWalk = Vector3::ZERO;
+            if (IsWalkingForward)
+            {
+                localWalk.z_ = -1.0f;
+            }
+            if (IsWalkingLeft)
+            {
+                localWalk.x_ = -1.0f;
+            }
+            if (IsWalkingBack)
+            {
+                localWalk.z_ = 1.0f;
+            }
+            if (IsWalkingRight)
+            {
+                localWalk.x_ = 1.0f;
+            }
+            localWalk.Normalize();
+            localWalk *= 0.01f * dt;
+
+            Vector3 parentWalk = Camera->GetCameraTransform().GetRotation() * localWalk;
+            Camera->GetCameraTransform().Translate(parentWalk);
+        }
+    }
+
+    void ResetCamera()
+    {
+        Camera->GetCameraPivot().SetIdentity();
+        Camera->GetCameraTransform().SetIdentity();
+        Camera->GetCameraTransform().SetTranslation(0.f, 3.f, 6.18f);
+        Camera->GetCameraTransform().LookAt(Vector3::ZERO);
+    }
+
+private:
+    FCameraWithPivot* Camera;
+    bool AcceptLMBRotate;
+    bool MouseCurrentlyOrbit;
+    bool MouseInFpsView;
+    int MouseLastX, MouseLastY;
+
+    bool IsWalkingForward = false;
+    bool IsWalkingLeft = false;
+    bool IsWalkingRight = false;
+    bool IsWalkingBack = false;
 };
 
 template <typename TOwner>
@@ -753,11 +832,24 @@ void myGlSetup(SDL_Window* window)
     testNodeGraphView->Init(vg);
     testNodeGraphView->SetPositionOnScreen({300.0f, 300.0f});
     metaInputHandler->Insert(testNodeGraphView);
+
+    StartTime = GTimeline.Now();
 }
 
 //Update and render, returns true if quitting
 bool myUpdateAndRender(SDL_Window* window)
 {
+    uint64_t timeElapsed = GTimeline.Now() - StartTime;
+    uint32_t elapsedMsec = GTimeline.ConvertToMilliSec(timeElapsed);
+
+    int32_t delta = (int64_t)elapsedMsec - (int64_t)GSimulationTime.GetCurrentTime();
+
+    GSimulationTime.AdvanceTime(15 + delta);
+
+    //printf("Elapsed:%d, delta:%d, Sim:%d\n", elapsedMsec, delta, GSimulationTime.GetCurrentTime());
+
+    cameraInputHandler->UpdateWalking(GSimulationTime.GetDeltaTime());
+
     glClearColor(0, 0, 0, 0);
     glClearDepth(1);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -785,7 +877,8 @@ bool myUpdateAndRender(SDL_Window* window)
 #if TC_OS == TC_OS_WINDOWS_NT
 	sprintf_s(fpsText, "clk: %d, frm: %lld, fps: %f", GTimeline.NowMilliSec(), frameCount, fps);
 #else
-	sprintf(fpsText, "clk: %d, frm: %lld, fps: %f", GTimeline.NowMilliSec(), frameCount, fps);
+	sprintf(fpsText, "clk: %d, frm: %lld, fps: %f, elps: %d, sim: %llu",
+            GTimeline.NowMilliSec(), frameCount, fps, elapsedMsec, GSimulationTime.GetCurrentTime());
 #endif
 
     ImGui_ImplSdlGL3_NewFrame(window);
@@ -796,6 +889,8 @@ bool myUpdateAndRender(SDL_Window* window)
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         if (ImGui::Button("Show Style Editor"))
             bShowStyleEditor = !bShowStyleEditor;
+        if (ImGui::Button("Reset Camera"))
+            cameraInputHandler->ResetCamera();
     }
 
     if (bShowStyleEditor)

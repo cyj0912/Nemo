@@ -61,14 +61,19 @@ uint64_t FHighResolutionClock::Now() const
 }
 #endif
 
-int FHighResolutionClock::NowMilliSec() const
+uint32_t FHighResolutionClock::NowMilliSec() const
 {
-    return Now() * 1000 / Frequency;
+    return static_cast<uint32_t>(Now() * 1000 / Frequency);
 }
 
 double FHighResolutionClock::GetFrequency() const
 {
     return Frequency;
+}
+
+uint32_t FHighResolutionClock::ConvertToMilliSec(uint64_t time) const
+{
+    return static_cast<uint32_t>(time * 1000 / Frequency);
 }
 
 void FHighResolutionClock::Pause()
