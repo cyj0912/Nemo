@@ -957,7 +957,9 @@ void myGlCleanup()
 #endif
 int main()
 {
+#if TC_OS == TC_OS_WINDOWS_NT
 	SetProcessDPIAware();
+#endif
     GResourceManager.Init();
 
     SDL_Init(SDL_INIT_VIDEO);
